@@ -13,6 +13,8 @@ library(corrplot)
 library(RColorBrewer)
 library(dplyr)
 library(ggplot2)
+library(terra)
+library(tidyverse)
   
 summarized_week_data <- summarised_week %>%
   group_by(year, week) %>%
@@ -439,8 +441,8 @@ hist(summarised_month$`Gray Wolf`)
 summary(summarised_month$Muskox)
 
 plot(summarised_month$Muskox)
-plot(summarised_month$Muskox, summarised_month$`Grizzly Bear`)
 plot(summarised_month$`Grizzly Bear`, summarised_month$Muskox)
+plot(summarised_month$`Gray Wolf`, summarised_month$Muskox)
 cor.test(summarised_month$`Grizzly Bear`, summarised_month$Muskox)
 #not a very strong correlation 
 #data:  summarised_month$`Grizzly Bear` and summarised_month$Muskox
@@ -475,8 +477,6 @@ selected_mammals_week <- selected_mammals_week %>%
 selected_mammals_week$year_week <- str_pad(selected_mammals_week$year_week, width = 2, pad = "0")
 
 #exporting "selected_mammals_week" to excel 
-
-
 
 # Filter data for summer and winter seasons
 filtered_muskox_data_hist <- selected_mammals_week %>%
@@ -617,13 +617,6 @@ getwd()
 
 #getting independent detections for muskox, grizzlies, and gray wolves PER season
 
-# Load necessary libraries
-library(dplyr)
-
-# Summarize the independent detections by season and species
-# Load necessary libraries
-library(dplyr)
-
 # Summarize the independent detections for each species by season
 independent_detections_per_season <- selected_mammals_week %>%
   # Filter rows where at least one species was detected
@@ -649,8 +642,42 @@ independent_detections_per_season <- selected_mammals_week %>%
 # View the result
 print(independent_detections_per_season)
 
+#adding the land cover names column to overlap_SCANFI_cameras_table
 
+overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
+  mutate(land_cover_name = case_when(
+    SCANFI_att_nfiLandCover_SW_2020_v1.2 == 1 ~ "Bryoid",
+    SCANFI_att_nfiLandCover_SW_2020_v1.2 == 2 ~ "Herbs",
+    SCANFI_att_nfiLandCover_SW_2020_v1.2 == 3 ~ "Rock",
+    SCANFI_att_nfiLandCover_SW_2020_v1.2 == 4 ~ "Shrub",
+    SCANFI_att_nfiLandCover_SW_2020_v1.2 == 5 ~ "Treed broadleaf",
+    SCANFI_att_nfiLandCover_SW_2020_v1.2 == 6 ~ "Treed conifer",
+    SCANFI_att_nfiLandCover_SW_2020_v1.2== 7 ~ "Treed mixed",
+    SCANFI_att_nfiLandCover_SW_2020_v1.2 == 8 ~ "Water"
+  ))
 
+# Spread the data into separate columns for each land cover type
+overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
+select(-n, -SCANFI_att_nfiLandCover_SW_2020_v1.2) %>%  
+  pivot_wider(
+    names_from = land_cover_name,  # Create a column for each land cover type
+    values_from = landcover_prop,  # Take values from the 'land_cover_prop' column
+    values_fill = list(landcover_prop = 0)  # Fill missing values with 0 (no land cover)
+  )
+
+#combining overlap_SCANFI_cameras_table and selected_mammals_week to become one dataset called
+
+# Merge the datasets based on a common column (e.g., "location")
+comb_overlap_SCANFI_and_selected_mammals_week<- merge(overlap_SCANFI_cameras_table, 
+                       selected_mammals_week, 
+                       by = "location",   # Column in both datasets that should be used to join
+                       all.x = TRUE)      # Keep all rows from overlap_SCANFI_cameras_table (left join)
+
+plot(comb_overlap_SCANFI_and_selected_mammals_week)
+
+#exporting "select_mammals_week" to an excel file
+# Write to Excel
+write_xlsx(comb_overlap_SCANFI_and_selected_mammals_week, "comb_overlap_SCANFI_and_selected_mammals_week.xlsx")
 
 
 

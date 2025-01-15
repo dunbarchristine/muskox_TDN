@@ -89,7 +89,7 @@ selected_mammals_week <- selected_mammals_week%>%
 selected_mammals_week <- selected_mammals_week%>%
   rename("grizzly_bear" = "Grizzly Bear")
 
-#creating 300 m buffers for cameras
+#loading in camera locations
 
 camera_locations <- read_csv("SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
   drop_na("longitude") %>%
@@ -98,25 +98,16 @@ camera_locations <- read_csv("SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Bi
 
 plot(camera_locations)
 
+#creating 300 m buffers for cameras
 camera_buffer <- st_buffer(camera_locations, 300)
 plot(camera_buffer)
 
-
-#playing around with buffer sizes ############################
-camera_buffer2 <- st_buffer(camera_locations, 1000)
-plot(camera_buffer2)
-
-SCANFI_landcover_cropped2 <- crop(SCANFI_landcover, camera_buffer2)
-plot(SCANFI_landcover_cropped2)                             
-
-
-##############################################################
-
 SCANFI_landcover <- rast("raw data/SCANFI_att_nfiLandCover_SW_2020_v1.2.tif")
 
-SCANFI_landcover_cropped <- crop(SCANFI_landcover, camera_buffer)
+plot(SCANFI_landcover)
 
-plot(SCANFI_landcover_cropped) 
+SCANFI_landcover_cropped <- crop(SCANFI_landcover, camera_buffer) #SCANFI_landcover_cropped is the scanfi data with the camera buffers
+plot(SCANFI_landcover_cropped)   
 
 Camera_buffer_zones <- rasterize(vect(camera_buffer), SCANFI_landcover_cropped, field = "location") 
 plot(Camera_buffer_zones) 
@@ -126,10 +117,11 @@ overlap_SCANFI_cameras <- crosstab(c(Camera_buffer_zones, SCANFI_landcover_cropp
 overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras %>%
   as_tibble() %>%
   group_by(location) %>%
-  mutate(landcover_prop = n/sum(n))
+  mutate(landcover_prop = n/sum(n)) #n is the number of pixels for each habitat type divided by all habitat types 
 
+#meeting with ammaan and nick
+SCANFI_proportions_camera_buffer
 
- 
  
  
  
