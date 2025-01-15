@@ -6,6 +6,9 @@ list.of.packages <- c("kableExtra", "tidyr", "ggplot2", "gridExtra", "dplyr", "H
                       "MuMIn","stringr","sf","raster","leaflet", "tidyverse","htmlwidgets","webshot", "purrr", "magick",
                       "forcats","multcomp", "reshape2", "lme4", "tidyr", "stats")
 
+install.packages("writexl")
+
+library(writexl)
 library(corrplot)
 library(RColorBrewer)
 library(dplyr)
@@ -33,6 +36,7 @@ print(excluded_weeks)
 
 #generate values from "2022_39 to 2022_52
 excluded_weeks_2022 <- paste0("2022_", 39:52)
+
 # View the result
 print(excluded_weeks_2022)
 
@@ -86,7 +90,7 @@ print(excluded_weeks_2022)
                             "2023_49", "2023_50", "2023_51", "2023_52" )))
   
 # Convert year_week to a factor with ordered levels (so it orders the x axis labels of the histogram in ggplot in the same order as the input spreadsheet)
-  weekly_season_data_clean2 <- summarized_week_data2 %>%
+  weekly_season_data_clean3 <- summarized_week_data2 %>%
     mutate(year_week = factor(year_week, 
                               levels = sort(unique(year_week)), 
                               ordered = TRUE)) %>%
@@ -139,13 +143,18 @@ ggplot(weekly_season_data_clean4, aes(x = year_week, y = Total_Count/n_effort, f
 
 #Make a data set from summarized_week dataset that includes muskox, caribou and moose 
 
+#change name of barren-ground caribou to barren_ground_caribou
+
+summarised_week <- summarised_week%>%
+  rename("Barren_Ground_Caribou" = "Barren-ground Caribou")
+
 #first make the dataset with all 3 species
 summarised_week_data_3_species <- summarised_week %>%
   group_by(year, week) %>%
   summarise(
     Total_Count_muskox = sum(Muskox, na.rm = TRUE),
     Total_Count_moose = sum(Moose, na.rm = TRUE),
-    Total_Count_caribou = sum(Barren_ground_Caribou, na.rm = TRUE),
+    Total_Count_caribou = sum(Barren_Ground_Caribou, na.rm = TRUE),
     n_effort = sum(n_days_effort, na.rm = TRUE),
     .groups = "drop"
   ) %>%
@@ -279,9 +288,6 @@ TDN_unugulates_super_clean <- TDN_ungulates_only_clean2%>%
 
 tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_main_report.csv")
 
-# Filter the data to remove rows before August 2021
-tdn_camera_active_dates <- tdn_camera_active_dates %>%
-  filter(date >= as.Date("2021-08-01"))
 
 tdn_camera_active_dates <- tdn_raw_camera %>%
   ### convert date time to date
@@ -306,6 +312,10 @@ tdn_camera_active_dates <- tdn_raw_camera %>%
   group_by(location, period_id) %>%
   ### keep only the start and end dates of each continuous period
   filter(date==min(date)|date==max(date))
+
+# Filter the data to remove rows before August 2021
+tdn_camera_active_dates <- tdn_camera_active_dates %>%
+  filter(date >= as.Date("2021-08-01"))
 
 camera_id <- unique(tdn_camera_active_dates$location)
 
@@ -414,7 +424,41 @@ wolf_grizz_musk <- selected_mammals_week %>%
 cor_matrix <- cor(wolf_grizz_musk)
 corrplot(cor_matrix, type="upper", order="hclust",
          col=brewer.pal(n=8, name="RdYlBu"))
+#christine and frances meeting dec 13 ------
+#here is where my meeting with frances started. come back and remove zeros from 2021 and rerun 
+#histogram weekly detections 
+  
+hist(wolf_grizz_musk$Muskox) #histogram weekly detections of muskox (there is a ton of zeros)
+hist(wolf_grizz_musk$grizzly_bear)
+hist(wolf_grizz_musk$gray_wolf)
 
+#histogram monthly detections
+hist(summarised_month$Muskox)
+hist(summarised_month$`Grizzly Bear`)
+hist(summarised_month$`Gray Wolf`)
+summary(summarised_month$Muskox)
+
+plot(summarised_month$Muskox)
+plot(summarised_month$Muskox, summarised_month$`Grizzly Bear`)
+plot(summarised_month$`Grizzly Bear`, summarised_month$Muskox)
+cor.test(summarised_month$`Grizzly Bear`, summarised_month$Muskox)
+#not a very strong correlation 
+#data:  summarised_month$`Grizzly Bear` and summarised_month$Muskox
+#t = 0.7502, df = 3955, p-value = 0.4532
+#alternative hypothesis: true correlation is not equal to 0
+#95 percent confidence interval:
+  #-0.01923838  0.04307157
+#sample estimates:
+  #cor 
+#0.01192817 
+
+plot(summarised_month$`Gray Wolf`, summarised_month$Muskox)
+cor.test(summarised_month$`Gray Wolf`, summarised_month$Muskox)
+#not strong but moreso than grizzlies 
+#meeting with frances finished at 2:55 mst
+
+
+#
 #adding seasons to selected_mammals_week data set
 
 # Adding a new column for seasons
@@ -426,6 +470,13 @@ selected_mammals_week <- selected_mammals_week %>%
     week %in% 38:51 ~ "Fall",     # Weeks 36 to 45
     week %in% 52:52 ~ "Winter",   # weeks 52 to 52
     TRUE ~ "Unknown"))
+
+#adding zeros to the column "year_week"
+selected_mammals_week$year_week <- str_pad(selected_mammals_week$year_week, width = 2, pad = "0")
+
+#exporting "selected_mammals_week" to excel 
+
+
 
 # Filter data for summer and winter seasons
 filtered_muskox_data_hist <- selected_mammals_week %>%
@@ -489,7 +540,7 @@ musk_sum_counts_2021<- musk_sum_counts_2021 %>%
 ggplot(musk_sum_counts_2021, aes(x = year_week, y = total_count, fill = season)) +
   geom_bar(stat = "identity", position = "dodge", color = "black") +
   labs(
-    title = "Weekly Independent Muskox Detections by Season 2021",
+    title = "Weekly Independent Muskox Detections by Season (2021)",
     x = "Year-Week",
     y = "Number of Muskox Detections"
   ) +
@@ -498,7 +549,7 @@ ggplot(musk_sum_counts_2021, aes(x = year_week, y = total_count, fill = season))
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   theme(axis.text.x = element_text(size = 10)) # Adjust size as needed  
 
- # Create the histogram for summer/winter/fall 2022
+ ############## Create the histogram for summer/winter/fall 2022
 
 # Filter the dataset to exclude weeks 39 to 52
 filtered_muskox_2022_data <- filtered_muskox_2022_data %>%
@@ -523,7 +574,7 @@ musk_sum_counts_2022 <- musk_sum_counts_2022%>%
 
 
 # Adding a new column for seasons
-musk_sum_counts_2022<- musk_sum_counts_2022 %>%
+musk_sum_counts_2022 <- musk_sum_counts_2022 %>%
   mutate(season = case_when(
     week %in% 1:10 ~ "Winter",   # Weeks 1 to 10
     week %in% 11:24 ~ "Spring",   # Weeks 11 to 24
@@ -536,7 +587,16 @@ musk_sum_counts_2022<- musk_sum_counts_2022 %>%
 musk_sum_counts_2022<- musk_sum_counts_2022 %>%
   mutate(week = str_pad(week, width = 2, side = "left", pad = "0"))
 
-#Plot the histogram with ggplot2
+musk_sum_counts_2022 <- musk_sum_counts_2022 %>%
+  mutate(year_week = str_replace(year_week, "(\\d{4}-(\\d{1}))", "\\1-0\\2"))
+
+# Add leading zeros to single digits in the 'year_week' column
+musk_sum_counts_2022 <- musk_sum_counts_2022 %>%
+  mutate(
+    year_week = str_replace(year_week, "(\\d{4}-(\\d))", "\\1-0\\2")  # Add leading zero to single-digit weeks
+  )
+
+#Plot the histogram with ggplot2 (not working atm, adding extra digits to x axis labels)
 ggplot(musk_sum_counts_2022, aes(x = year_week, y = total_count, fill = season)) +
 geom_bar(stat = "identity", position = "dodge", color = "black") +
 labs(
@@ -549,7 +609,45 @@ theme_minimal() +
 theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
 theme(axis.text.x = element_text(size = 10)) # Adjust size as needed  
 
+#exporting "select_mammals_week" to an excel file
+# Write to Excel
+write_xlsx(selected_mammals_week, "selected_mammals_week.xlsx")
 
+getwd()
+
+#getting independent detections for muskox, grizzlies, and gray wolves PER season
+
+# Load necessary libraries
+library(dplyr)
+
+# Summarize the independent detections by season and species
+# Load necessary libraries
+library(dplyr)
+
+# Summarize the independent detections for each species by season
+independent_detections_per_season <- selected_mammals_week %>%
+  # Filter rows where at least one species was detected
+  filter(Muskox == 1 | gray_wolf == 1 | grizzly_bear == 1) %>%
+  # Group by season and location (and year_week if necessary for more precision)
+  group_by(season, location) %>%
+  # Keep only the first detection per season-location combination for each species
+  summarize(
+    muskox_detection = max(Muskox),           # Only keep the first detection of muskox
+    wolves_detection = max(gray_wolf),      # Only keep the first detection of wolves
+    grizzly_detection = max(grizzly_bear)    # Only keep the first detection of grizzly bears
+  ) %>%
+  # Ungroup so we can summarize by season
+  ungroup() %>%
+  # Now, summarize by season to get the total independent detections for each species
+  group_by(season) %>%
+  summarize(
+    independent_muskox = sum(muskox_detection),
+    independent_wolves = sum(wolves_detection),
+    independent_grizzly = sum(grizzly_detection)
+  )
+
+# View the result
+print(independent_detections_per_season)
 
 
 
