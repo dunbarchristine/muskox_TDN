@@ -15,7 +15,8 @@ library(dplyr)
 library(ggplot2)
 library(terra)
 library(tidyverse)
-  
+library(raster)
+
 summarized_week_data <- summarised_week %>%
   group_by(year, week) %>%
   summarise(Total_Count = sum(Muskox, na.rm = TRUE),
@@ -444,6 +445,14 @@ plot(summarised_month$Muskox)
 plot(summarised_month$`Grizzly Bear`, summarised_month$Muskox)
 plot(summarised_month$`Gray Wolf`, summarised_month$Muskox)
 cor.test(summarised_month$`Grizzly Bear`, summarised_month$Muskox)
+
+plot(summarised_month$`Grizzly Bear`, summarised_month$Muskox,
+     xlab = "Grizzly Bear", ylab = "Muskox")
+
+plot(summarised_month$`Gray Wolf`, summarised_month$Muskox,
+     xlab = "Gray Wolf", ylab = "Muskox")
+
+
 #not a very strong correlation 
 #data:  summarised_month$`Grizzly Bear` and summarised_month$Muskox
 #t = 0.7502, df = 3955, p-value = 0.4532
@@ -678,6 +687,136 @@ plot(comb_overlap_SCANFI_and_selected_mammals_week)
 #exporting "select_mammals_week" to an excel file
 # Write to Excel
 write_xlsx(comb_overlap_SCANFI_and_selected_mammals_week, "comb_overlap_SCANFI_and_selected_mammals_week.xlsx")
+
+
+# Create the tibble with the necessary data
+wolf_grizz_musk <- tibble(
+  x = rep(1:5, each = 5),
+  y = rep(1:5, times = 5),
+  value = c(1, 2, 3, 4, 5, 2, 3, 4, 5, 6, 3, 4, 5, 6, 7, 
+            4, 5, 6, 7, 8, 5, 6, 7, 8, 9)
+)
+
+# Create heatmap with ggplot
+ggplot(wolf_grizz_musk, aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c() +  # Optional: Adds a nice color scale
+  theme_minimal() +
+  labs(title = "Heatmap Example", x = "X Axis", y = "Y Axis")
+
+################################################elevation 
+
+# Check for empty geometries
+esker_data_empty <- esker_data[st_is_empty(esker_data), ]
+esker_data_non_empty <- esker_data[!st_is_empty(esker_data), ]
+
+# Display number of empty geometries
+nrow(esker_data_empty)
+nrow(esker_data_non_empty)
+
+# Remove empty geometries
+esker_data <- esker_data[!st_is_empty(esker_data), ]
+
+# Remove the Z dimension
+esker_data <- st_zm(esker_data)
+
+# Convert the sf object to a Spatial object
+
+esker_sp <- as(esker_data, "Spatial")
+
+# Rasterize
+# Assuming 'esker_sp' is already a SpatialLinesDataFrame or a SpatVector
+# Make sure it is a SpatVector
+esker_sp <- vect(esker_sp)
+
+# Rasterize using terra::rasterize
+esker_rast <- rasterize(esker_sp, rast)
+
+
+#getting distance between cameras and eskers
+
+rast <- terra::rast(esker_data, resolution = 30)
+esker_rast <- rasterize(esker_data, rast)
+esker_dist <- distance(esker_data) %>%
+(Camera_buffer_zones,
+    crs_epsg = 32609,
+    buffer_dist = 10000
+  )
+
+water_data <- sf::read_sf("data/raw/geography/waterbodies/lhy_000c16a_e.shp")
+
+large_buffer <- musk_collar %>%
+  sf::st_bbox() %>%
+  sf::st_as_sfc() %>%
+  sf::st_buffer(100000)
+
+water_data_crop <- water_data %>%
+  sf::st_intersection(large_buffer %>% st_transform(st_crs(water_data))) %>%
+  st_transform(32609)
+
+##############################################################
+
+most_detected_habitat <- as.data.frame(most_detected_habitat)
+
+# Step 1: Reshape the data to long format
+most_detected_habitat <- comb_overlap_SCANFI_and_selected_mammals_week %>%
+  dplyr::select(location, Shrub, Herbs, Water, `Treed mixed`, `Treed broadleaf`, `Treed conifer`, gray_wolf, grizzly_bear, n_days_effort) %>%
+  pivot_longer(cols = c("Shrub", "Herbs", "Water", "Treed mixed", "Treed broadleaf", "Treed conifer"), 
+               names_to = "habitat_type", 
+               values_to = "proportion") %>%
+  group_by(location) %>%
+  filter(proportion == max(proportion))
+
+most_detected_habitat %>%
+  dplyr::select(location, habitat_type) %>%
+  distinct() %>%
+  pull(habitat_type) %>%
+  as.factor() %>%
+  summary()
+
+# Step 2: Summarize the detections by species and habitat type
+most_detected_habitat_summary <- most_detected_habitat %>%
+  dplyr::select(grizzly_bear, gray_wolf, habitat_type, n_days_effort) %>%  # Explicitly use dplyr::select()
+  group_by(habitat_type) %>%
+  summarise(grizzly_abund = sum(grizzly_bear)/sum(n_days_effort)*1000,
+            wolf_abund = sum(gray_wolf)/sum(n_days_effort)*1000,
+            num_cameras = length(unique(location)))
+
+  pivot_longer(cols = c("grizzly_bear", "gray_wolf"), 
+               names_to = "species", 
+               values_to = "detections") %>%
+  group_by(habitat_type, species) %>%
+  summarise(total_detections = sum(detections, na.rm = TRUE), .groups = "drop")
+
+# Step 3: Reshape data back to wide format (one column per species)
+most_detected_habitat_summary <- most_detected_habitat_summary %>%
+  pivot_wider(names_from = species, values_from = total_detections)
+
+# View the result
+print(wide_data)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

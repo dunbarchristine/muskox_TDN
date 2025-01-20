@@ -122,9 +122,12 @@ overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras %>%
 #meeting with ammaan and nick
 SCANFI_proportions_camera_buffer
 
+#loading in elevation
+
+esker_data <- st_read("spatial/shapefiles/Linear_Surficial_Features_of_Canada_(Canadian_Geoscience_Map_195).shp") 
  
- 
- 
+
+
  
  
  
