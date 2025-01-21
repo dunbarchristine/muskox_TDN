@@ -725,6 +725,27 @@ esker_sp <- vect(esker_sp)
 # Rasterize using terra::rasterize
 esker_rast <- rasterize(esker_sp, rast)
 
+library(terra)
+
+# Check the CRS of Camera_buffer_zones
+crs(Camera_buffer_zones)
+# Example: Assign a CRS (replace with the actual CRS if needed)
+crs(Camera_buffer_zones) <- "EPSG:4326"  # Assign WGS84 (for example)
+# If Camera_buffer_zones is an sf object, convert it to a raster
+Camera_buffer_zones_raster <- rasterize(Camera_buffer_zones, esker_data)  # Align to 'esker_data'
+
+# Reproject the raster
+Camera_buffer_zones_raster <- project(Camera_buffer_zones_raster, crs(st_crs(esker_data)$proj4string))
+
+
+# Reproject Camera_buffer_zones to the CRS of esker_data
+Camera_buffer_zones <- project(Camera_buffer_zones, crs(st_crs(esker_data)$proj4string))
+
+# Now you can compute the distance
+esker_dist <- st_distance(esker_data, Camera_buffer_zones)
+
+
+
 
 #getting distance between cameras and eskers
 
@@ -788,8 +809,14 @@ camera_locations_df$elevation <- elevations
 # Print the resulting table
 print(camera_locations_df)
 
+# Merge the datasets based on 'camera_id'
+comb_overlap_SCANFI_and_selected_mammals_week <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
+                     camera_locations_df[, c("location", "elevation")], 
+                     by = "location", 
+                     all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
 
-
+# View the merged dataset
+head(merged_data)
 
 
 
@@ -822,7 +849,7 @@ most_detected_habitat <- as.data.frame(most_detected_habitat)
 
 # Step 1: Reshape the data to long format
 most_detected_habitat <- comb_overlap_SCANFI_and_selected_mammals_week %>%
-  dplyr::select(location, Shrub, Herbs, Water, `Treed mixed`, `Treed broadleaf`, `Treed conifer`, gray_wolf, grizzly_bear, n_days_effort) %>%
+  dplyr::select(location, Shrub, Herbs, Water, `Treed mixed`, `Treed broadleaf`, `Treed conifer`, gray_wolf, grizzly_bear, Muskox, n_days_effort) %>%
   pivot_longer(cols = c("Shrub", "Herbs", "Water", "Treed mixed", "Treed broadleaf", "Treed conifer"), 
                names_to = "habitat_type", 
                values_to = "proportion") %>%
@@ -838,24 +865,20 @@ most_detected_habitat %>%
 
 # Step 2: Summarize the detections by species and habitat type
 most_detected_habitat_summary <- most_detected_habitat %>%
-  dplyr::select(grizzly_bear, gray_wolf, habitat_type, n_days_effort) %>%  # Explicitly use dplyr::select()
+  dplyr::select(grizzly_bear, gray_wolf, Muskox, habitat_type, n_days_effort) %>%  # Explicitly use dplyr::select()
   group_by(habitat_type) %>%
   summarise(grizzly_abund = sum(grizzly_bear)/sum(n_days_effort)*1000,
             wolf_abund = sum(gray_wolf)/sum(n_days_effort)*1000,
+            muskox_abund = sum(Muskox)/sum(n_days_effort)*1000,
             num_cameras = length(unique(location)))
 
-  pivot_longer(cols = c("grizzly_bear", "gray_wolf"), 
+  pivot_longer(cols = c("grizzly_bear", "gray_wolf", "Muskox"), 
                names_to = "species", 
                values_to = "detections") %>%
   group_by(habitat_type, species) %>%
   summarise(total_detections = sum(detections, na.rm = TRUE), .groups = "drop")
 
-# Step 3: Reshape data back to wide format (one column per species)
-most_detected_habitat_summary <- most_detected_habitat_summary %>%
-  pivot_wider(names_from = species, values_from = total_detections)
 
-# View the result
-print(wide_data)
 
 
 
