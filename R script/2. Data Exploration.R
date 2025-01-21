@@ -697,14 +697,8 @@ wolf_grizz_musk <- tibble(
             4, 5, 6, 7, 8, 5, 6, 7, 8, 9)
 )
 
-# Create heatmap with ggplot
-ggplot(wolf_grizz_musk, aes(x = x, y = y, fill = value)) +
-  geom_tile() +
-  scale_fill_viridis_c() +  # Optional: Adds a nice color scale
-  theme_minimal() +
-  labs(title = "Heatmap Example", x = "X Axis", y = "Y Axis")
-
 ################################################elevation 
+#playing with esker data. want to create map that shows eskers and camera sites
 
 # Check for empty geometries
 esker_data_empty <- esker_data[st_is_empty(esker_data), ]
@@ -721,7 +715,6 @@ esker_data <- esker_data[!st_is_empty(esker_data), ]
 esker_data <- st_zm(esker_data)
 
 # Convert the sf object to a Spatial object
-
 esker_sp <- as(esker_data, "Spatial")
 
 # Rasterize
@@ -743,19 +736,88 @@ esker_dist <- distance(esker_data) %>%
     buffer_dist = 10000
   )
 
-water_data <- sf::read_sf("data/raw/geography/waterbodies/lhy_000c16a_e.shp")
+#erics code for elevation
 
-large_buffer <- musk_collar %>%
-  sf::st_bbox() %>%
-  sf::st_as_sfc() %>%
-  sf::st_buffer(100000)
+# Reshape data for plotting and calculate average mean elevation and standard deviation for each buffer size
+dem_extract_plot <- dem_extract_join %>%
+  pivot_longer(cols = starts_with("mean_elev"), names_to = "Buffer_Size", values_to = "Mean_Elevation") %>%
+  mutate(Buffer_Size = factor(Buffer_Size, levels = c("mean_elev_300", "mean_elev_550", "mean_elev_1622", "mean_elev_3245"))) %>%
+  group_by(Buffer_Size) %>%
+  summarise(Avg_Mean_Elevation = mean(Mean_Elevation),
+            SD = sd(Mean_Elevation))
 
-water_data_crop <- water_data %>%
-  sf::st_intersection(large_buffer %>% st_transform(st_crs(water_data))) %>%
-  st_transform(32609)
+# Fit a linear regression model
+lm_model <- lm(Avg_Mean_Elevation ~ as.numeric(Buffer_Size), data = dem_extract_plot)
+
+# Create the plot with error bars and manually add the regression line
+ggplot(dem_extract_plot, aes(x = Buffer_Size, y = Avg_Mean_Elevation)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Avg_Mean_Elevation - SD, ymax = Avg_Mean_Elevation + SD), width = 0.2) +
+  geom_abline(intercept = coef(lm_model)[1], slope = coef(lm_model)[2], color = "blue") +  # Add a manual linear trend line
+  labs(title = "Average Mean Elevation Across Buffer Sizes with Error Bars and Trend Line",
+       x = "Buffer Size",
+       y = "Average Mean Elevation") 
+
+################
+#trying to create elevation map using ArcticDEM (code from erics github)
+
+#Load tdn boundary data
+
+TDN_dem <- st_transform(TDN_boundary, crs = st_crs(TDN_DEM))
+
+dem_cropped<-crop(TDN_DEM,TDN_dem)
+plot(dem_cropped, axes = FALSE)
+plot(st_geometry(TDN_dem), add = TRUE)
+plot(st_geometry(camera_locations),add = TRUE)
+
+#trying to make table with elevation for each camera location 
+
+# Assuming 'dem_cropped' is the cropped DEM and 'camera_locations' is an sf object of camera locations
+
+# Extract elevation values for each camera location
+elevations <- extract(dem_cropped, camera_locations)
+
+# Combine the camera locations data with the extracted elevation values
+# Convert camera_locations to a data frame if it's an sf object
+camera_locations_df <- st_as_sf(camera_locations) %>%
+  st_drop_geometry()  # Remove geometry to get a regular data frame
+
+# Combine the extracted elevations with the camera location data
+camera_locations_df$elevation <- elevations
+
+# Print the resulting table
+print(camera_locations_df)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ##############################################################
-
+#trying to see what habitats grizzlies and gray wolves are spending the most time in
 most_detected_habitat <- as.data.frame(most_detected_habitat)
 
 # Step 1: Reshape the data to long format

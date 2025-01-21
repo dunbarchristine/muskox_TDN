@@ -89,6 +89,10 @@ selected_mammals_week <- selected_mammals_week%>%
 selected_mammals_week <- selected_mammals_week%>%
   rename("grizzly_bear" = "Grizzly Bear")
 
+#loading in tdn boundary
+
+TDN_boundary <- st_read("spatial/shapefiles/TDN_Boundary.shp")
+
 #loading in camera locations
 
 camera_locations <- read_csv("SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
@@ -119,15 +123,16 @@ overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras %>%
   group_by(location) %>%
   mutate(landcover_prop = n/sum(n)) #n is the number of pixels for each habitat type divided by all habitat types 
 
-#meeting with ammaan and nick
-SCANFI_proportions_camera_buffer
-
-#loading in elevation
+#loading in esker data
 
 esker_data <- st_read("spatial/shapefiles/Linear_Surficial_Features_of_Canada_(Canadian_Geoscience_Map_195).shp") 
  
+#loading in DEM data from erics google drive folder
 
+TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/TDN_DEM/TDN_DEM.tif") #not sure if this worked
 
+#load data
+TDN_DEM<-raster("~/Desktop/Analysis/Learning/learning/spatial/TDN_DEM/TDN_DEM.tif")
  
  
  
