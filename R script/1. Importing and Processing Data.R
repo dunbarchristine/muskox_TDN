@@ -139,10 +139,26 @@ TDN_DEM<-raster("~/Desktop/Analysis/Learning/learning/spatial/TDN_DEM/TDN_DEM.ti
 
 # Read your custom basemap image (make sure it's a .png, .jpg, or similar)
 basemap_image <- readPNG("~/Desktop/Analysis/Learning/learning/spatial/Base Map of TDN/map.png")
+
+# Load your basemap (make sure to adjust the path to where the image is stored)
+basemap_image <- raster("~/Desktop/Analysis/Learning/learning/spatial/Base Map of TDN/map.png")  # Change the path to your file
  
 #reading in national fire database fire polygon data 
 
 national_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
  
+#loading in nwt ecoregions
+
+nwt_ecoregions <- st_read("spatial/shapefiles/FMD_NWT_EcoRegions.shp")
+plot(nwt_boundary)
+
+
+#loading in nwt boundary 
+
+nwt_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/gpr_000a11a_e.shp")
+
+
+
+
 
 

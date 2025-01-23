@@ -1,18 +1,22 @@
 ####*********
 ### Lets make a plot with Muskox and compare detections between season
 #load in packages
-
-list.of.packages <- c("kableExtra", "tidyr", "ggplot2", "gridExtra", "Hmsc", "jtools", "lubridate", "corrplot", 
-                      "MuMIn","stringr","sf","raster","leaflet", "tidyverse","htmlwidgets","webshot", "purrr", "magick",
-                      "forcats","multcomp", "reshape2", "lme4", "tidyr", "stats")
-
 install.packages("writexl")
+install.packages("ggplot2")
+install.packages("ggspatial")
+install.packages("sf")
+install.packages("prettymapr")
+
+
 
 library(writexl)
 library(RColorBrewer)
 library(terra)
 library(raster)
 library(tidyverse)
+library(ggspatial)
+library(sf)
+library(prettymapr)
 
 summarized_week_data <- summarised_week %>%
   group_by(year, week) %>%
@@ -712,8 +716,10 @@ camera_buffer_bb <- camera_buffer %>%
   st_as_sfc()
 
 plot(camera_buffer_bb)
+# Then add TDN_boundary
+plot(TDN_boundary, add = TRUE)
+#then add buffers
 plot(camera_buffer$geometry, add = TRUE)
-
 
 # Remove empty geometries
 esker_data <- esker_data[!st_is_empty(esker_data), ]
@@ -736,10 +742,38 @@ plot(esker_data)
 rast <- terra::rast(esker_data, resolution = 30)
 esker_dist <- distance(rast, esker_data)
 
-
 plot(rast)
+
 plot(log(esker_dist))
+
+#trying to overlay tdn boundary on esker_data map
+# Check CRS of both objects
+st_crs(esker_data)
+st_crs(TDN_boundary)
+
+# If they differ, transform one to the other
+TDN_boundary_eskers <- st_transform(TDN_boundary, st_crs(esker_data))
+
+# Plot esker_data first
 plot(esker_data$geometry)
+
+# Plot TDN_boundary next, ensuring it's in the same CRS
+plot(TDN_boundary, add = TRUE)
+
+#then add buffers
+plot(camera_buffer$geometry, add = TRUE)
+
+# Plot with ggplot2 and basemap
+ggplot() +
+  geom_sf(data = esker_data, color = "blue", fill = NA) +  # Plot esker_data with transparent fill
+  geom_sf(data = TDN_boundary, color = "black", fill = NA) +  # Plot TDN_boundary with transparent fill
+  geom_sf(data = camera_buffer, color = "red", fill = NA) +  # Plot camera_buffer with transparent fill
+  ggspatial::annotation_map_tile(zoom = 10)  # Add OpenStreetMap basemap using ggspatial
+
+
+
+#plot(esker_data$geometry) %>%
+#plot(TDN_boundary, add = TRUE)
 
 #trying to create elevation map using ArcticDEM (code from erics github)
 
@@ -751,32 +785,6 @@ dem_cropped<-crop(TDN_DEM,TDN_dem)
 plot(dem_cropped, axes = FALSE)
 plot(st_geometry(TDN_dem), add = TRUE)
 plot(st_geometry(camera_locations),add = TRUE)
-
-
-#trying to overlay my map with basemap
-
-# Convert the DEM raster to a data frame for ggplot2 plotting
-dem_cropped_df <- as.data.frame(dem_cropped, xy = TRUE)
-
-# If your camera locations and TDN_dem are sf objects, you need to use geom_sf
-camera_locations <- st_as_sf(camera_locations)
-TDN_dem <- st_as_sf(TDN_dem)
-
-# Plotting with ggplot2
-ggplot() +
-  # Add the custom base map image
-  annotation_raster(basemap_image, xmin = -123.0, xmax = -122.0, ymin = 37.0, ymax = 38.0) +  # Adjust the extent
-  # Add DEM data as raster
-  geom_raster(dem_cropped = dem_cropped_df, aes(x = x, y = y, fill = layer)) +
-  scale_fill_viridis_c() +  # You can customize the color scale
-  # Add TDN_dem geometry (e.g., polygons, buffers, etc.)
-  geom_sf(data = TDN_dem, fill = NA, color = "black", size = 1) +
-  # Add camera locations (points)
-  geom_sf(data = camera_locations, aes(color = "red"), size = 2) +
-  # Customize the plot
-  theme_minimal() +
-  ggtitle("Map with Custom Basemap and Spatial Data")
-
 
 #trying to make table with elevation for each camera location 
 
@@ -807,25 +815,47 @@ head(merged_data)
 
 plot(national_fire_database)
 
+#playing around with the nwt ecoregions data. trying to make maps with it.
 
+# Ensure both datasets are in the same CRS (if they are not already)
+if (st_crs(TDN_boundary) != st_crs(nwt_ecoregions)) {
+  TDN_boundary <- st_transform(TDN_boundary, st_crs(nwt_ecoregions))
+}
 
+# Crop TDN_Boundary to nwt_ecoregions using st_intersection()
+cropped_TDN_Boundary <- st_intersection(TDN_boundary, nwt_ecoregions)
 
+# Plot to check the result
+plot(cropped_TDN_Boundary$geometry)
 
+plot(nwt_boundary$geometry)
 
+# Subset the data to get the 7th row
+nwt_boundary_row7 <- nwt_boundary[7, ]
 
+# Plot the 7th row using plot()
+plot(nwt_boundary_row7$geometry)
 
+# Or use ggplot2 to plot
+library(ggplot2)
+ggplot() +
+  geom_sf(data = nwt_boundary_row7, color = "blue", fill = "lightblue")  # Adjust colors as needed
 
+# Step 2: If the CRS do not match, transform one of them to the CRS of the other
+# Assuming nwt_boundary_row7 is the reference CRS:
+if (st_crs(TDN_boundary) != st_crs(nwt_boundary_row7)) {
+  TDN_boundary <- st_transform(TDN_boundary, st_crs(nwt_boundary_row7))
 
+# Step 3: Crop the TDN_Boundary using st_intersection
+cropped_TDN_Boundary <- st_intersection(TDN_boundary, nwt_boundary_row7)
 
-
-
-
-
-
-
-
-
-
+# Plot with ggplot, adding basemap using ggspatial
+ggplot() +
+  ggspatial::annotation_map_tile(zoom = 2) +  # Add OpenStreetMap basemap (adjust zoom for resolution)
+  geom_sf(data = nwt_boundary_row7, color = "blue", fill = "lightblue", alpha = 0.5) +  # Plot row 7 of nwt_boundary
+  geom_sf(data = cropped_TDN_Boundary, color = "red", fill = "lightcoral", alpha = 0.5) +  # Plot cropped TDN_Boundary
+  theme_minimal() +
+  labs(title = "Cropped TDN_Boundary within nwt_boundary Row 7")
 
 
 ##############################################################
