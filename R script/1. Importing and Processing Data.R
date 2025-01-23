@@ -17,6 +17,7 @@ library(dplyr)
 library(tidyverse)
 library(sf)
 library(terra)
+library(png)
 
 
 #load species data
@@ -125,8 +126,8 @@ overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras %>%
 
 #loading in esker data
 
-esker_data <- st_read("spatial/shapefiles/Linear_Surficial_Features_of_Canada_(Canadian_Geoscience_Map_195).shp") 
- 
+esker_data <- st_read("spatial/shapefiles/Linear_Surficial_Features_of_Canada_(Canadian_Geoscience_Map_195).shp")
+
 #loading in DEM data from erics google drive folder
 
 TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/TDN_DEM/TDN_DEM.tif") #not sure if this worked
@@ -134,9 +135,14 @@ TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/TDN_DEM/TDN_DE
 #load data
 TDN_DEM<-raster("~/Desktop/Analysis/Learning/learning/spatial/TDN_DEM/TDN_DEM.tif")
  
+#adding basemap to elevation map
+
+# Read your custom basemap image (make sure it's a .png, .jpg, or similar)
+basemap_image <- readPNG("~/Desktop/Analysis/Learning/learning/spatial/Base Map of TDN/map.png")
  
- 
- 
+#reading in national fire database fire polygon data 
+
+national_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
  
 
 

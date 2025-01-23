@@ -2,20 +2,17 @@
 ### Lets make a plot with Muskox and compare detections between season
 #load in packages
 
-list.of.packages <- c("kableExtra", "tidyr", "ggplot2", "gridExtra", "dplyr", "Hmsc", "jtools", "lubridate", "corrplot", 
+list.of.packages <- c("kableExtra", "tidyr", "ggplot2", "gridExtra", "Hmsc", "jtools", "lubridate", "corrplot", 
                       "MuMIn","stringr","sf","raster","leaflet", "tidyverse","htmlwidgets","webshot", "purrr", "magick",
                       "forcats","multcomp", "reshape2", "lme4", "tidyr", "stats")
 
 install.packages("writexl")
 
 library(writexl)
-library(corrplot)
 library(RColorBrewer)
-library(dplyr)
-library(ggplot2)
 library(terra)
-library(tidyverse)
 library(raster)
+library(tidyverse)
 
 summarized_week_data <- summarised_week %>%
   group_by(year, week) %>%
@@ -708,78 +705,42 @@ esker_data_non_empty <- esker_data[!st_is_empty(esker_data), ]
 nrow(esker_data_empty)
 nrow(esker_data_non_empty)
 
+# creating camera buffer bounding box 
+camera_buffer_bb <- camera_buffer %>%
+  st_buffer(100000) %>%
+  st_bbox() %>%
+  st_as_sfc()
+
+plot(camera_buffer_bb)
+plot(camera_buffer$geometry, add = TRUE)
+
+
 # Remove empty geometries
 esker_data <- esker_data[!st_is_empty(esker_data), ]
 
 # Remove the Z dimension
-esker_data <- st_zm(esker_data)
+esker_data <- st_zm(esker_data) %>%
+  st_transform(32612) %>%
+  st_intersection(camera_buffer_bb)
 
-# Convert the sf object to a Spatial object
-esker_sp <- as(esker_data, "Spatial")
+plot(esker_data)
 
 # Rasterize
 # Assuming 'esker_sp' is already a SpatialLinesDataFrame or a SpatVector
 # Make sure it is a SpatVector
-esker_sp <- vect(esker_sp)
-
-# Rasterize using terra::rasterize
-esker_rast <- rasterize(esker_sp, rast)
-
-library(terra)
-
-# Check the CRS of Camera_buffer_zones
-crs(Camera_buffer_zones)
-# Example: Assign a CRS (replace with the actual CRS if needed)
-crs(Camera_buffer_zones) <- "EPSG:4326"  # Assign WGS84 (for example)
-# If Camera_buffer_zones is an sf object, convert it to a raster
-Camera_buffer_zones_raster <- rasterize(Camera_buffer_zones, esker_data)  # Align to 'esker_data'
-
-# Reproject the raster
-Camera_buffer_zones_raster <- project(Camera_buffer_zones_raster, crs(st_crs(esker_data)$proj4string))
-
-
-# Reproject Camera_buffer_zones to the CRS of esker_data
-Camera_buffer_zones <- project(Camera_buffer_zones, crs(st_crs(esker_data)$proj4string))
-
-# Now you can compute the distance
-esker_dist <- st_distance(esker_data, Camera_buffer_zones)
-
-
+#esker_sp <- vect(esker_sp)
 
 
 #getting distance between cameras and eskers
 
 rast <- terra::rast(esker_data, resolution = 30)
-esker_rast <- rasterize(esker_data, rast)
-esker_dist <- distance(esker_data) %>%
-(Camera_buffer_zones,
-    crs_epsg = 32609,
-    buffer_dist = 10000
-  )
+esker_dist <- distance(rast, esker_data)
 
-#erics code for elevation
 
-# Reshape data for plotting and calculate average mean elevation and standard deviation for each buffer size
-dem_extract_plot <- dem_extract_join %>%
-  pivot_longer(cols = starts_with("mean_elev"), names_to = "Buffer_Size", values_to = "Mean_Elevation") %>%
-  mutate(Buffer_Size = factor(Buffer_Size, levels = c("mean_elev_300", "mean_elev_550", "mean_elev_1622", "mean_elev_3245"))) %>%
-  group_by(Buffer_Size) %>%
-  summarise(Avg_Mean_Elevation = mean(Mean_Elevation),
-            SD = sd(Mean_Elevation))
+plot(rast)
+plot(log(esker_dist))
+plot(esker_data$geometry)
 
-# Fit a linear regression model
-lm_model <- lm(Avg_Mean_Elevation ~ as.numeric(Buffer_Size), data = dem_extract_plot)
-
-# Create the plot with error bars and manually add the regression line
-ggplot(dem_extract_plot, aes(x = Buffer_Size, y = Avg_Mean_Elevation)) +
-  geom_point() +
-  geom_errorbar(aes(ymin = Avg_Mean_Elevation - SD, ymax = Avg_Mean_Elevation + SD), width = 0.2) +
-  geom_abline(intercept = coef(lm_model)[1], slope = coef(lm_model)[2], color = "blue") +  # Add a manual linear trend line
-  labs(title = "Average Mean Elevation Across Buffer Sizes with Error Bars and Trend Line",
-       x = "Buffer Size",
-       y = "Average Mean Elevation") 
-
-################
 #trying to create elevation map using ArcticDEM (code from erics github)
 
 #Load tdn boundary data
@@ -790,6 +751,32 @@ dem_cropped<-crop(TDN_DEM,TDN_dem)
 plot(dem_cropped, axes = FALSE)
 plot(st_geometry(TDN_dem), add = TRUE)
 plot(st_geometry(camera_locations),add = TRUE)
+
+
+#trying to overlay my map with basemap
+
+# Convert the DEM raster to a data frame for ggplot2 plotting
+dem_cropped_df <- as.data.frame(dem_cropped, xy = TRUE)
+
+# If your camera locations and TDN_dem are sf objects, you need to use geom_sf
+camera_locations <- st_as_sf(camera_locations)
+TDN_dem <- st_as_sf(TDN_dem)
+
+# Plotting with ggplot2
+ggplot() +
+  # Add the custom base map image
+  annotation_raster(basemap_image, xmin = -123.0, xmax = -122.0, ymin = 37.0, ymax = 38.0) +  # Adjust the extent
+  # Add DEM data as raster
+  geom_raster(dem_cropped = dem_cropped_df, aes(x = x, y = y, fill = layer)) +
+  scale_fill_viridis_c() +  # You can customize the color scale
+  # Add TDN_dem geometry (e.g., polygons, buffers, etc.)
+  geom_sf(data = TDN_dem, fill = NA, color = "black", size = 1) +
+  # Add camera locations (points)
+  geom_sf(data = camera_locations, aes(color = "red"), size = 2) +
+  # Customize the plot
+  theme_minimal() +
+  ggtitle("Map with Custom Basemap and Spatial Data")
+
 
 #trying to make table with elevation for each camera location 
 
@@ -818,9 +805,7 @@ comb_overlap_SCANFI_and_selected_mammals_week <- merge(comb_overlap_SCANFI_and_s
 # View the merged dataset
 head(merged_data)
 
-
-
-
+plot(national_fire_database)
 
 
 
