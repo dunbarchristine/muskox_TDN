@@ -14,11 +14,11 @@
 library(devtools)
 library(wildrtrax)
 library(dplyr)
-library(tidyverse)
 library(sf)
 library(terra)
 library(png)
-
+library(tidyverse)
+library(raster)
 
 #load species data
 species_all <- read.csv("~/Desktop/Analysis/Learning/learning/raw data/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_tag_report.csv")
@@ -71,7 +71,7 @@ summarised_week <- wt_summarise_cam(
 
 # Select the first and second columns
 selected_mammals_week <- summarised_week %>%
-  select(2,3,4,5,28,31,41)
+  dplyr::select(2,3,4,5,28,31,41)
 
 
 # Extract last 2 characters from the 'location' column because it is the camera site and create a new column 'camera'
@@ -93,6 +93,9 @@ selected_mammals_week <- selected_mammals_week%>%
 #loading in tdn boundary
 
 TDN_boundary <- st_read("spatial/shapefiles/TDN_Boundary.shp")
+
+
+tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_main_report.csv")
 
 #loading in camera locations
 
@@ -144,21 +147,18 @@ basemap_image <- readPNG("~/Desktop/Analysis/Learning/learning/spatial/Base Map 
 basemap_image <- raster("~/Desktop/Analysis/Learning/learning/spatial/Base Map of TDN/map.png")  # Change the path to your file
  
 #reading in national fire database fire polygon data 
-
 national_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
  
 #loading in nwt ecoregions
-
 nwt_ecoregions <- st_read("spatial/shapefiles/FMD_NWT_EcoRegions.shp")
 plot(nwt_boundary)
 
-
 #loading in nwt boundary 
-
 nwt_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/gpr_000a11a_e.shp")
 
-
-
+#loading in nfdb shapefiles
+NFDB <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly_large_fires/NFDB_poly_20210707_large_fires.shp")
+plot(NFDB)
 
 
 

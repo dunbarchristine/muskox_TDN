@@ -6,17 +6,20 @@ install.packages("ggplot2")
 install.packages("ggspatial")
 install.packages("sf")
 install.packages("prettymapr")
-
-
+install.packages("rnaturalearth")
+install.packages("rnaturalearthdata")
 
 library(writexl)
 library(RColorBrewer)
 library(terra)
 library(raster)
-library(tidyverse)
 library(ggspatial)
 library(sf)
 library(prettymapr)
+library(grid)
+library(tidyverse)
+library(rnaturalearth)
+library(rnaturalearthdata)
 
 summarized_week_data <- summarised_week %>%
   group_by(year, week) %>%
@@ -290,9 +293,6 @@ TDN_unugulates_super_clean <- TDN_ungulates_only_clean2%>%
 
 #creating graphs that show camera activity throughout the year (when they were triggered, breaks between triggers, etc)
 
-tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_main_report.csv")
-
-
 tdn_camera_active_dates <- tdn_raw_camera %>%
   ### convert date time to date
   mutate(datetime = as.POSIXct(image_date_time),
@@ -422,7 +422,7 @@ tdn_camera_active_dates %>%
 cor.test(muskox detections, wolf detections)
 
 wolf_grizz_musk <- selected_mammals_week %>%
-  select(5,6,7)
+  dplyr::select(5,6,7)
 
 # Step 1: Calculate the correlation matrix
 cor_matrix <- cor(wolf_grizz_musk)
@@ -491,7 +491,7 @@ selected_mammals_week$year_week <- str_pad(selected_mammals_week$year_week, widt
 # Filter data for summer and winter seasons
 filtered_muskox_data_hist <- selected_mammals_week %>%
   filter(season %in% c("Summer", "Winter")) %>%
-  select(Muskox, season, week, year)
+  dplyr::select(Muskox, season, week, year)
 
 # Assuming your data frame is called 'data'
 # Filter data for the year 2021
@@ -668,7 +668,7 @@ overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
 
 # Spread the data into separate columns for each land cover type
 overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
-select(-n, -SCANFI_att_nfiLandCover_SW_2020_v1.2) %>%  
+dplyr::select(-n, -SCANFI_att_nfiLandCover_SW_2020_v1.2) %>%  
   pivot_wider(
     names_from = land_cover_name,  # Create a column for each land cover type
     values_from = landcover_prop,  # Take values from the 'land_cover_prop' column
@@ -761,16 +761,28 @@ plot(esker_data$geometry)
 plot(TDN_boundary, add = TRUE)
 
 #then add buffers
-plot(camera_buffer$geometry, add = TRUE)
+plot(camera_locations$geometry, add = TRUE)
 
 # Plot with ggplot2 and basemap
 ggplot() +
-  geom_sf(data = esker_data, color = "blue", fill = NA) +  # Plot esker_data with transparent fill
-  geom_sf(data = TDN_boundary, color = "black", fill = NA) +  # Plot TDN_boundary with transparent fill
-  geom_sf(data = camera_buffer, color = "red", fill = NA) +  # Plot camera_buffer with transparent fill
-  ggspatial::annotation_map_tile(zoom = 10)  # Add OpenStreetMap basemap using ggspatial
+  geom_sf(data = esker_data %>% st_transform(st_crs(32612)), color = "blue", fill = NA) +  # Plot esker_data with transparent fill
+  geom_sf(data = TDN_boundary %>% st_transform(st_crs(32612)), color = "black", linewidth = 1.5, fill = NA) +  # Plot TDN_boundary with transparent fill
+  geom_sf(data = camera_buffer %>% st_transform(st_crs(32612)), color = "red", linewidth = 2, fill = NA) +
+  coord_sf(datum = st_crs(32612))  # Plot camera_buffer with transparent fill
+  #annotation_scale(location = "br", width_hint = 0.1)   # Add scale bar to the bottom-right corner
+  #annotation_north_arrow(location = "tr", 
+                         #width = unit(1, "in"), height = unit(1, "in") 
 
+                          
 
+# Compute distances from each camera trap to the nearest esker
+camera_locations <- camera_locations %>%
+  rowwise() %>%
+  mutate(distance_to_esker = min(st_distance(geometry, esker_data$geometry))) %>%
+  ungroup()
+
+# View the results
+print(camera_locations)
 
 #plot(esker_data$geometry) %>%
 #plot(TDN_boundary, add = TRUE)
@@ -778,6 +790,11 @@ ggplot() +
 #trying to create elevation map using ArcticDEM (code from erics github)
 
 #Load tdn boundary data
+# Assign a CRS (replace with the correct CRS)
+# Assign a CRS using EPSG code
+crs(TDN_DEM) <- CRS("+init=epsg:32612")  # Example: EPSG 32633 for UTM Zone 33N
+
+
 
 TDN_dem <- st_transform(TDN_boundary, crs = st_crs(TDN_DEM))
 
@@ -804,16 +821,34 @@ camera_locations_df$elevation <- elevations
 # Print the resulting table
 print(camera_locations_df)
 
+#combining distance to eskers column to comb_overlap_SCANFI_and_selected_mammals_week
+
 # Merge the datasets based on 'camera_id'
 comb_overlap_SCANFI_and_selected_mammals_week <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
                      camera_locations_df[, c("location", "elevation")], 
                      by = "location", 
                      all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
 
+# Convert tibble to a regular data.frame (if necessary)
+camera_locations_df <- as.data.frame(camera_locations_df)
+
+# Now perform the left join
+comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
+  dplyr::left_join(camera_locations_df %>% dplyr::select(location, distance_to_esker), 
+                   by = "location")
+
+st_write(camera_locations, "SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_repo.shp")
+
 # View the merged dataset
 head(merged_data)
 
-plot(national_fire_database)
+######### for some reason R was not adding distance_to_esker from my other code to the "comb_overlap_SCANFI_and_selected_mammals_week" dataset, so I redid it again here with code from chatgpt and it worked:
+
+# Perform a left join to add the "distance to eskers" column from camera_locations to comb_overlap_SCANFI_and_selected_mammals_week
+comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
+  left_join(camera_locations %>%
+              dplyr::select(location, distance_to_esker),  # select only relevant columns
+            by = "location") 
 
 #playing around with the nwt ecoregions data. trying to make maps with it.
 
@@ -843,7 +878,7 @@ ggplot() +
 
 # Step 2: If the CRS do not match, transform one of them to the CRS of the other
 # Assuming nwt_boundary_row7 is the reference CRS:
-if (st_crs(TDN_boundary) != st_crs(nwt_boundary_row7)) {
+if (st_crs(TDN_boundary) != st_crs(nwt_boundary_row7))
   TDN_boundary <- st_transform(TDN_boundary, st_crs(nwt_boundary_row7))
 
 # Step 3: Crop the TDN_Boundary using st_intersection
@@ -892,19 +927,149 @@ most_detected_habitat_summary <- most_detected_habitat %>%
                values_to = "detections") %>%
   group_by(habitat_type, species) %>%
   summarise(total_detections = sum(detections, na.rm = TRUE), .groups = "drop")
+  
+  
+#making incet nwt boundary 
+  
+  # Download landmass data for the entire world from the naturalearth and naturalearthdata packages
+  world_landmass <- ne_countries(scale = "medium", returnclass = "sf") %>%
+    st_transform(st_crs(Canada_Boundaries))
+  
+  #Download Canada boundaries
+  Canada_Boundaries<-st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/gpr_000a11a_e.shp") %>%
+    st_transform(Canada_Boundaries, crs = 3347)
+  
+  #Transform Canadian Boundaries to NAD83
+  Canada_Boundaries_NWT <- Canada_Boundaries %>% st_transform(st_crs(TDN_boundary))
+  
+  NWT_Boundary <- Canada_Boundaries_NWT %>%
+    filter(PREABBR == "N.W.T.")
+  
+  saveRDS(NWT_Boundary, "spatial/shapefiles/TDN_Boundary.rds")
+  
+  world_landmass_NWT <- world_landmass %>% 
+    st_transform(st_crs(TDN_boundary))
+  
+  NWT_landmass <- st_intersection(world_landmass_NWT, NWT_Boundary)
+  
+  saveRDS(NWT_landmass, "spatial/shapefiles/TDN_Boundary.rds")
+  
+  # Save the plot as a PNG with a transparent background
+  png("nwt_boundary.png", bg = "transparent", width = 800, height = 600)
+  
+  # Create the plot
+  ggplot() +
+    geom_sf(data = NWT_Boundary, fill = NA, color = "black") +  # Boundary with no fill, black border
+    geom_sf(data = NWT_landmass, fill = "thistle3") +  # Landmass with light grey fill
+    geom_sf(data = TDN_boundary, fill = "royalblue2", color = "black") +  # Boundary with limegreen fill, black border
+    theme_minimal() +
+    theme(
+      axis.text = element_blank(),
+      axis.title = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(size = 16, face = "bold"),
+      plot.subtitle = element_text(size = 12),
+      panel.background = element_rect(fill = "transparent", color = NA),  # Transparent panel background
+      plot.background = element_rect(fill = "transparent", color = NA)   # Transparent background for the plot area
+    )
 
+#checking data with protocols from zuur et al. 2010
 
+#looking for explanatory variable outliers
+  comb_overlap_SCANFI_and_selected_mammals_week |> 
+    mutate(distance_to_esker = as.numeric(distance_to_esker)) %>%
+    dplyr::select(c(`Treed broadleaf`, `Treed conifer`, `Treed mixed`, Bryoid, Shrub, Water, Herbs, gray_wolf, grizzly_bear, elevation, distance_to_esker)) %>%
+    pivot_longer(cols = c(`Treed broadleaf`, `Treed conifer`, `Treed mixed`, Bryoid, Shrub, Water, Herbs, gray_wolf, grizzly_bear, elevation, distance_to_esker)) |> 
+    ggplot() +
+    geom_point(aes(x = value, y = rep(1:nrow(comb_overlap_SCANFI_and_selected_mammals_week), each = 11))) +
+    facet_wrap(~ name, scales = "free") +
+    labs(x = "Value of the variable",
+         y = "Order of the data") +
+    theme_bw()
 
+  #looking for muskox outliers
+  comb_overlap_SCANFI_and_selected_mammals_week |> 
+    mutate(distance_to_esker = as.numeric(distance_to_esker)) %>%
+    dplyr::select(c(Muskox)) %>%
+    pivot_longer(cols = c(Muskox)) |> 
+    ggplot() +
+    geom_point(aes(x = value, y = rep(1:nrow(comb_overlap_SCANFI_and_selected_mammals_week), each = 1))) +
+    facet_wrap(~ name, scales = "free") +
+    labs(x = "Value of the variable",
+         y = "Order of the data") +
+    theme_bw()
 
+#looking at homogeneity for variance
+  comb_overlap_SCANFI_and_selected_mammals_week |> 
+    ggplot() +
+    geom_boxplot(aes(y = Muskox, x = cluster)) +
+    theme_bw()
+  
+#cropping nwt to national_fire_database
 
+# Convert the national fire data to an sf object (make sure to replace 'longitude' and 'latitude' with actual column names)
+  national_fire_database_sf <- st_as_sf(national_fire_database, coords = c("longitude", "latitude"), crs = 4326)
 
+  # Check CRS of both datasets
+  st_crs(national_fire_database_sf)
+  st_crs(nwt_boundary)
+  
+  # If they don't match, reproject the national fire database to the NWT boundary's CRS
+  if (st_crs(national_fire_database_sf) != st_crs(nwt_boundary)) 
+    national_fire_database_sf <- st_transform(national_fire_database_sf, st_crs(nwt_boundary))
+  
+  
+# Crop the national fire data to the NWT boundary
+  fire_data_nwt <- st_intersection(national_fire_database_sf, nwt_boundary)
 
+  # Check if there are invalid geometries in your datasets
+  invalid_fire <- st_is_valid(national_fire_database_sf)
+  invalid_nwt <- st_is_valid(nwt_boundary)
+  
+  # If there are invalid geometries, the result will be FALSE
+  sum(!invalid_fire)  # Number of invalid geometries in fire data
+  sum(!invalid_nwt)   # Number of invalid geometries in NWT boundary
+  
+  # Try to fix invalid geometries in the fire data
+  national_fire_database_sf <- st_make_valid(national_fire_database_sf)
+  
+  # Check if the geometries are now valid
+  invalid_fire <- st_is_valid(national_fire_database_sf)
+  sum(!invalid_fire)  # Should return 0 if all geometries are valid now
+  
+  warnings()  # Check the first 50 warnings
+  
+  # Remove Z and M coordinates from both datasets
+  national_fire_database_sf <- st_zm(national_fire_database_sf)
+  nwt_boundary <- st_zm(nwt_boundary)
+  
+  # Perform the intersection between fire data and NWT boundary
+  fire_data_nwt <- st_intersection(national_fire_database_sf, nwt_boundary)
+  
+  # Extract invalid geometries
+  invalid_geom_fire <- national_fire_database_sf[!st_is_valid(national_fire_database_sf), ]
+  
+  # Plot the invalid geometries to inspect them
+  plot(st_geometry(invalid_geom_fire))
+  
+  # Try to make the geometries valid again
+  national_fire_database_sf <- st_make_valid(national_fire_database_sf)
+  
+  # Check if the geometries are valid now
+  invalid_fire <- st_is_valid(national_fire_database_sf)
+  sum(!invalid_fire)  # Should return 0 if all geometries are valid
 
+  # Remove the invalid geometries from the dataset
+  national_fire_database_sf <- national_fire_database_sf[st_is_valid(national_fire_database_sf), ]
+  
+  # Check if there are any invalid geometries left
+  invalid_fire <- st_is_valid(national_fire_database_sf)
+  sum(!invalid_fire)  # Should return 0 if all geometries are valid
 
-
-
-
-
+  
+ 
+  
 
 
 
