@@ -20,6 +20,9 @@ library(png)
 library(tidyverse)
 library(raster)
 
+setwd("~/Desktop/Analysis/Learning/learning/spatial")
+
+
 #load species data
 species_all <- read.csv("~/Desktop/Analysis/Learning/learning/raw data/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_tag_report.csv")
 
@@ -92,14 +95,14 @@ selected_mammals_week <- selected_mammals_week%>%
 
 #loading in tdn boundary
 
-TDN_boundary <- st_read("spatial/shapefiles/TDN_Boundary.shp")
+TDN_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_Boundary.shp")
 
 
 tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_main_report.csv")
 
 #loading in camera locations
 
-camera_locations <- read_csv("SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
+camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
   drop_na("longitude") %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
   st_transform(32612) #this number corresponds to the epsg code for utm code 12
@@ -110,7 +113,7 @@ plot(camera_locations)
 camera_buffer <- st_buffer(camera_locations, 300)
 plot(camera_buffer)
 
-SCANFI_landcover <- rast("raw data/SCANFI_att_nfiLandCover_SW_2020_v1.2.tif")
+SCANFI_landcover <- rast("~/Desktop/Analysis/Learning/learning/raw data/SCANFI_att_nfiLandCover_SW_2020_v1.2.tif")
 
 plot(SCANFI_landcover)
 
@@ -146,19 +149,21 @@ basemap_image <- readPNG("~/Desktop/Analysis/Learning/learning/spatial/Base Map 
 # Load your basemap (make sure to adjust the path to where the image is stored)
 basemap_image <- raster("~/Desktop/Analysis/Learning/learning/spatial/Base Map of TDN/map.png")  # Change the path to your file
  
-#reading in national fire database fire polygon data 
-national_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
- 
+#loading in nfdb shapefiles
+nfdb <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
+
 #loading in nwt ecoregions
 nwt_ecoregions <- st_read("spatial/shapefiles/FMD_NWT_EcoRegions.shp")
-plot(nwt_boundary)
 
 #loading in nwt boundary 
 nwt_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/gpr_000a11a_e.shp")
 
-#loading in nfdb shapefiles
-NFDB <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly_large_fires/NFDB_poly_20210707_large_fires.shp")
-plot(NFDB)
+NBAC <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/nbac_1972_2023_20240530_shp/nbac_1972_2023_20240530.shp")
+
+#reading in national fire database fire polygon data 
+National_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly_large_fires/NFDB_poly_20210707_large_fires.shp")
+
+
 
 
 

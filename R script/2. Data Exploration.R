@@ -9,6 +9,8 @@ install.packages("prettymapr")
 install.packages("rnaturalearth")
 install.packages("rnaturalearthdata")
 
+
+
 library(writexl)
 library(RColorBrewer)
 library(terra)
@@ -20,6 +22,7 @@ library(grid)
 library(tidyverse)
 library(rnaturalearth)
 library(rnaturalearthdata)
+library(tidyterra)
 
 summarized_week_data <- summarised_week %>%
   group_by(year, week) %>%
@@ -845,10 +848,10 @@ head(merged_data)
 ######### for some reason R was not adding distance_to_esker from my other code to the "comb_overlap_SCANFI_and_selected_mammals_week" dataset, so I redid it again here with code from chatgpt and it worked:
 
 # Perform a left join to add the "distance to eskers" column from camera_locations to comb_overlap_SCANFI_and_selected_mammals_week
-comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
-  left_join(camera_locations %>%
-              dplyr::select(location, distance_to_esker),  # select only relevant columns
-            by = "location") 
+#comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
+  #left_join(camera_locations %>%
+              #dplyr::select(location, distance_to_esker),  # select only relevant columns
+            #by = "location") 
 
 #playing around with the nwt ecoregions data. trying to make maps with it.
 
@@ -1005,9 +1008,36 @@ most_detected_habitat_summary <- most_detected_habitat %>%
     ggplot() +
     geom_boxplot(aes(y = Muskox, x = cluster)) +
     theme_bw()
-  
-#cropping nwt to national_fire_database
 
+  #removing the column called "distance_to_esker.y"
+  comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
+    dplyr::select(-distance_to_esker.y)
+  
+ 
+#renaming column called "distance_to_esker.x" to "distance_to_esker"
+  comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
+    rename(distance_to_esker = distance_to_esker.x)
+  
+#What are the relationships between Y and X variables?
+  Z <- as.vector(as.matrix(comb_overlap_SCANFI_and_selected_mammals_week[, c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "elevation", "distance_to_esker")]))
+  Y10 <- rep(comb_overlap_SCANFI_and_selected_mammals_week$Muskox, 11)
+  MyNames <- names(comb_overlap_SCANFI_and_selected_mammals_week[,c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "elevation", "distance_to_esker")])
+  ID10 <- rep(MyNames, each = length(comb_overlap_SCANFI_and_selected_mammals_week$Muskox))
+  tibble(response = Y10, vars = Z, varnames = ID10) %>%
+    ggplot(aes(x = vars, y = response)) +
+    geom_point() +
+    geom_smooth(method = "loess") +
+    facet_wrap(~varnames, scales = "free")
+  
+#creating a binned instead to see/understand data more clearly
+  temp <- tibble(response = Y10, vars = Z, varnames = ID10) %>%
+    mutate(response_binned = case_when(
+      response == 0 ~ "0",
+      response <= 50 ~ "0-50",
+      TRUE ~ ">50"
+    ))
+  
+#cropping nwt_boundary to national_fire_database
 # Convert the national fire data to an sf object (make sure to replace 'longitude' and 'latitude' with actual column names)
   national_fire_database_sf <- st_as_sf(national_fire_database, coords = c("longitude", "latitude"), crs = 4326)
 
@@ -1067,6 +1097,11 @@ most_detected_habitat_summary <- most_detected_habitat %>%
   invalid_fire <- st_is_valid(national_fire_database_sf)
   sum(!invalid_fire)  # Should return 0 if all geometries are valid
 
+  # Perform the intersection again
+  fire_data_nwt <- st_intersection(national_fire_database_sf, nwt_boundary)
+  
+  # Check the result
+  head(fire_data_nwt)
   
  
   
