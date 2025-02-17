@@ -161,7 +161,12 @@ nwt_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles
 NBAC <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/nbac_1972_2023_20240530_shp/nbac_1972_2023_20240530.shp")
 
 #reading in national fire database fire polygon data 
-National_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly_large_fires/NFDB_poly_20210707_large_fires.shp")
+National_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly_large_fires 2/NFDB_poly_20210707_large_fires.shp")
+
+load("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/nbac_fire_TDN.RData")
+
+
+
 
 
 

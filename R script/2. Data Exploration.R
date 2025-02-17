@@ -784,6 +784,16 @@ camera_locations <- camera_locations %>%
   mutate(distance_to_esker = min(st_distance(geometry, esker_data$geometry))) %>%
   ungroup()
 
+# Remove the 'm' and convert to numeric
+comb_overlap_SCANFI_and_selected_mammals_week$distance_to_esker <- 
+  as.numeric(gsub("m", "", comb_overlap_SCANFI_and_selected_mammals_week$distance_to_esker))
+
+# Rename the column to include 'm'
+colnames(comb_overlap_SCANFI_and_selected_mammals_week)[
+  which(names(comb_overlap_SCANFI_and_selected_mammals_week) == "distance_to_esker")] <- "distance_to_esker_m"
+
+
+
 # View the results
 print(camera_locations)
 
@@ -925,14 +935,45 @@ most_detected_habitat_summary <- most_detected_habitat %>%
             muskox_abund = sum(Muskox)/sum(n_days_effort)*1000,
             num_cameras = length(unique(location)))
 
+
+#trying to plot most_detected_habitat_summary
+ggplot() +
+  geom_sf(data = TDN_boundary$geometry) +
+  geom_sf(data = most_detected_habitat_summary$muskox_abund, size = 3) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(title = "TDN Sites by Habitat", color = "Habitat")
+
+ggplot(most_detected_habitat_summary) +
+  geom_sf(aes(fill = muskox_abund), color = "black") +  # Fill by muskox abundance
+  scale_fill_viridis_c(option = "C", name = "Muskox Abundance") +  # Color scale
+  labs(title = "Muskox Abundance by Habitat Type within TDN Boundary") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+#this is not working? even though it did before
   pivot_longer(cols = c("grizzly_bear", "gray_wolf", "Muskox"), 
                names_to = "species", 
                values_to = "detections") %>%
   group_by(habitat_type, species) %>%
   summarise(total_detections = sum(detections, na.rm = TRUE), .groups = "drop")
   
+ #trying this code from chatgpt:
+  most_detected_habitat %>%
+    pivot_longer(cols = c("grizzly_bear", "gray_wolf", "Muskox"), 
+                 names_to = "species", 
+                 values_to = "detections") %>%
+    group_by(habitat_type, species) %>%
+    summarise(total_detections = sum(detections, na.rm = TRUE), .groups = "drop")
   
-#making incet nwt boundary 
+ 
+  
+#making inset nwt boundary 
   
   # Download landmass data for the entire world from the naturalearth and naturalearthdata packages
   world_landmass <- ne_countries(scale = "medium", returnclass = "sf") %>%
@@ -1008,15 +1049,7 @@ most_detected_habitat_summary <- most_detected_habitat %>%
     ggplot() +
     geom_boxplot(aes(y = Muskox, x = cluster)) +
     theme_bw()
-
-  #removing the column called "distance_to_esker.y"
-  comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
-    dplyr::select(-distance_to_esker.y)
   
- 
-#renaming column called "distance_to_esker.x" to "distance_to_esker"
-  comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
-    rename(distance_to_esker = distance_to_esker.x)
   
 #What are the relationships between Y and X variables?
   Z <- as.vector(as.matrix(comb_overlap_SCANFI_and_selected_mammals_week[, c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "elevation", "distance_to_esker")]))
