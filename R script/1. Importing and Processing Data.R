@@ -117,7 +117,17 @@ SCANFI_landcover <- rast("~/Desktop/Analysis/Learning/learning/raw data/SCANFI_a
 
 plot(SCANFI_landcover)
 
-SCANFI_landcover_cropped <- crop(SCANFI_landcover, camera_buffer) #SCANFI_landcover_cropped is the scanfi data with the camera buffers
+SCANFI_landcover_cropped <- crop(SCANFI_landcover, TDN_boundary %>% st_transform(crs(SCANFI_landcover))) %>% 
+  project("EPSG:32612") #SCANFI_landcover_cropped is the scanfi data with the camera buffers
+
+cats <- data.frame(id = 1:8, cover = c("Bryoid", "Herbs", "Rock", "Shrub",
+                                       "Treed broadleaf", "Treed conifer",
+                                       "Treed mixed", "Water"))
+coltab <- data.frame(id = 1:8, cover = c("#408A73","#BAD48F","#A8ABAE","#B38A33",
+                                         "#148C3D","#003D00","#5C752B","#4C70A3"))
+levels(SCANFI_landcover_cropped) <- cats
+coltab(SCANFI_landcover_cropped) <- coltab
+
 plot(SCANFI_landcover_cropped)   
 
 Camera_buffer_zones <- rasterize(vect(camera_buffer), SCANFI_landcover_cropped, field = "location") 

@@ -908,7 +908,6 @@ ggplot() +
 
 ##############################################################
 #trying to see what habitats grizzlies and gray wolves are spending the most time in
-most_detected_habitat <- as.data.frame(most_detected_habitat)
 
 # Step 1: Reshape the data to long format
 most_detected_habitat <- comb_overlap_SCANFI_and_selected_mammals_week %>%
@@ -926,6 +925,8 @@ most_detected_habitat %>%
   as.factor() %>%
   summary()
 
+most_detected_habitat <- as.data.frame(most_detected_habitat)
+
 # Step 2: Summarize the detections by species and habitat type
 most_detected_habitat_summary <- most_detected_habitat %>%
   dplyr::select(grizzly_bear, gray_wolf, Muskox, habitat_type, n_days_effort) %>%  # Explicitly use dplyr::select()
@@ -935,6 +936,42 @@ most_detected_habitat_summary <- most_detected_habitat %>%
             muskox_abund = sum(Muskox)/sum(n_days_effort)*1000,
             num_cameras = length(unique(location)))
 
+write_xlsx(most_detected_habitat_summary, "most_detected_habitat_summary.xlsx")
+
+#filtering out just muskox sightings
+data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
+  filter(species_common_name %in% c("Muskox", "Grizzly Bear", "Gray Wolf")) %>% #if I want to filter by a species
+  mutate(week = week(date), #if I want to create a column with week number
+         month = month(date),
+         year = year(date),
+         individual_count = as.numeric(individual_count))
+
+#averaging muskox detections by week
+total_data <- data %>% 
+  group_by(date, month, location, species_common_name) %>%
+  summarise(date_count = max(individual_count)) %>%
+  group_by(location, species_common_name) %>%
+  summarise(total_count = mean(date_count) * 7)
+
+#creating data frames to plot from  
+total_data_cameras <- merge(total_data, TDN_Cameras, by="location")
+#month_data_cameras <- merge(month_data, TDN_Cameras, by="location")
+
+#converting to sf objects
+total_data_cameras_SF <-st_as_sf(total_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
+#data_cameras_SF <- st_as_sf(data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
+
+ggplot() +
+  geom_sf(data=TDN_boundary %>% st_transform(32612), aes(geometry = geometry), fill = NA, color = "black", size = 20) +
+  tidyterra::geom_spatraster(data = SCANFI_landcover_cropped) +
+  geom_sf(data=total_data_cameras_SF %>% st_transform(32612), aes(geometry = geometry, size=total_count)) +
+  facet_wrap(~species_common_name, nrow = 1) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
 
 #trying to plot most_detected_habitat_summary
 ggplot() +
@@ -956,7 +993,7 @@ ggplot(most_detected_habitat_summary) +
   theme_minimal() +
   theme(legend.position = "right")
 
-#this is not working? even though it did before
+#code not running
   pivot_longer(cols = c("grizzly_bear", "gray_wolf", "Muskox"), 
                names_to = "species", 
                values_to = "detections") %>%
@@ -971,7 +1008,31 @@ ggplot(most_detected_habitat_summary) +
     group_by(habitat_type, species) %>%
     summarise(total_detections = sum(detections, na.rm = TRUE), .groups = "drop")
   
- 
+  # Create a bar plot for abundance by landcover type for grizzly bears
+  ggplot(most_detected_habitat_summary, aes(x = habitat_type, y = grizzly_abund)) +
+    geom_bar(stat = "identity", position = "dodge", width = 0.3, color = "cornflowerblue", fill = "cornflowerblue") + # Make bars smaller
+    #scale_fill_manual(values = c("muskox_abund" = "skyblue")) +  # Custom colors
+    labs(x = "Landcover Type", y = "Grizzly Abundance", title = "Grizzly Abundance by Landcover Type") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels if needed
+  
+  # Create a bar plot for abundance by landcover type for muskox
+  ggplot(most_detected_habitat_summary, aes(x = habitat_type, y = muskox_abund)) +
+    geom_bar(stat = "identity", position = "dodge", width = 0.3, color = "cornflowerblue", fill = "cornflowerblue") + # Make bars smaller
+    #scale_fill_manual(values = c("muskox_abund" = "skyblue")) +  # Custom colors
+    labs(x = "Landcover Type", y = "Muskox Abundance", title = "Muskox Abundance by Landcover Type") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels if needed
+  
+  # Create a bar plot for abundance by landcover type for gray wolves
+  ggplot(most_detected_habitat_summary, aes(x = habitat_type, y = wolf_abund)) +
+    geom_bar(stat = "identity", position = "dodge", width = 0.3, color = "cornflowerblue", fill = "cornflowerblue") + # Make bars smaller
+    #scale_fill_manual(values = c("muskox_abund" = "skyblue")) +  # Custom colors
+    labs(x = "Landcover Type", y = "Wolf Abundance", title = "Wolf Abundance by Landcover Type") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels if needed
+  
+  
   
 #making inset nwt boundary 
   
