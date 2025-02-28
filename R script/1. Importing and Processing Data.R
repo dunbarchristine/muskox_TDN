@@ -24,7 +24,7 @@ setwd("~/Desktop/Analysis/Learning/learning/spatial")
 
 
 #load species data
-species_all <- read.csv("~/Desktop/Analysis/Learning/learning/raw data/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_tag_report.csv")
+species_all <- read.csv("SpeciesRawData (Oct 31)/SPECIES_ALL_LIST.csv")
 
 #create independent detections
 species_ind_data <- wt_ind_detect(
@@ -98,7 +98,7 @@ selected_mammals_week <- selected_mammals_week%>%
 TDN_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_Boundary.shp")
 
 
-tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_main_report.csv")
+tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/SPECIES_ALL_LIST.csv")
 
 #loading in camera locations
 
@@ -118,7 +118,7 @@ SCANFI_landcover <- rast("~/Desktop/Analysis/Learning/learning/raw data/SCANFI_a
 plot(SCANFI_landcover)
 
 SCANFI_landcover_cropped <- crop(SCANFI_landcover, TDN_boundary %>% st_transform(crs(SCANFI_landcover))) %>% 
-  project("EPSG:32612") #SCANFI_landcover_cropped is the scanfi data with the camera buffers
+  project("EPSG:32612", method = "near") #SCANFI_landcover_cropped is the scanfi data with the camera buffers
 
 cats <- data.frame(id = 1:8, cover = c("Bryoid", "Herbs", "Rock", "Shrub",
                                        "Treed broadleaf", "Treed conifer",
@@ -127,8 +127,14 @@ coltab <- data.frame(id = 1:8, cover = c("#408A73","#BAD48F","#A8ABAE","#B38A33"
                                          "#148C3D","#003D00","#5C752B","#4C70A3"))
 levels(SCANFI_landcover_cropped) <- cats
 coltab(SCANFI_landcover_cropped) <- coltab
+writeRaster(SCANFI_landcover_cropped, "spatial/SCANFI_landcover_cropped.tif", datatype = "INT1U", overwrite=TRUE)
+SCANFI_landcover_cropped <- rast("spatial/SCANFI_landcover_cropped.tif")
+plot(SCANFI_landcover_cropped)  
 
-plot(SCANFI_landcover_cropped)   
+
+cropped_SCANFI_TDN_Boundary <- crop(SCANFI_landcover_cropped, TDN_boundary, mask = TRUE)
+plot(cropped_SCANFI_TDN_Boundary) 
+plot(TDN_boundary)
 
 Camera_buffer_zones <- rasterize(vect(camera_buffer), SCANFI_landcover_cropped, field = "location") 
 plot(Camera_buffer_zones) 
@@ -146,21 +152,13 @@ esker_data <- st_read("spatial/shapefiles/Linear_Surficial_Features_of_Canada_(C
 
 #loading in DEM data from erics google drive folder
 
-TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/TDN_DEM/TDN_DEM.tif") #not sure if this worked
+TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif") #not sure if this worked
 
 #load data
-TDN_DEM<-raster("~/Desktop/Analysis/Learning/learning/spatial/TDN_DEM/TDN_DEM.tif")
- 
-#adding basemap to elevation map
-
-# Read your custom basemap image (make sure it's a .png, .jpg, or similar)
-basemap_image <- readPNG("~/Desktop/Analysis/Learning/learning/spatial/Base Map of TDN/map.png")
-
-# Load your basemap (make sure to adjust the path to where the image is stored)
-basemap_image <- raster("~/Desktop/Analysis/Learning/learning/spatial/Base Map of TDN/map.png")  # Change the path to your file
+TDN_DEM<-raster("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif")
  
 #loading in nfdb shapefiles
-nfdb <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
+#nfdb <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
 
 #loading in nwt ecoregions
 nwt_ecoregions <- st_read("spatial/shapefiles/FMD_NWT_EcoRegions.shp")
@@ -171,7 +169,7 @@ nwt_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles
 NBAC <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/nbac_1972_2023_20240530_shp/nbac_1972_2023_20240530.shp")
 
 #reading in national fire database fire polygon data 
-National_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly_large_fires 2/NFDB_poly_20210707_large_fires.shp")
+#National_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly_large_fires 2/NFDB_poly_20210707_large_fires.shp")
 
 load("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/nbac_fire_TDN.RData")
 

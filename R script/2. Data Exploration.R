@@ -665,7 +665,7 @@ overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 4 ~ "Shrub",
     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 5 ~ "Treed broadleaf",
     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 6 ~ "Treed conifer",
-    SCANFI_att_nfiLandCover_SW_2020_v1.2== 7 ~ "Treed mixed",
+    SCANFI_att_nfiLandCover_SW_2020_v1.2 == 7 ~ "Treed mixed",
     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 8 ~ "Water"
   ))
 
@@ -765,18 +765,6 @@ plot(TDN_boundary, add = TRUE)
 
 #then add buffers
 plot(camera_locations$geometry, add = TRUE)
-
-# Plot with ggplot2 and basemap
-ggplot() +
-  geom_sf(data = esker_data %>% st_transform(st_crs(32612)), color = "blue", fill = NA) +  # Plot esker_data with transparent fill
-  geom_sf(data = TDN_boundary %>% st_transform(st_crs(32612)), color = "black", linewidth = 1.5, fill = NA) +  # Plot TDN_boundary with transparent fill
-  geom_sf(data = camera_buffer %>% st_transform(st_crs(32612)), color = "red", linewidth = 2, fill = NA) +
-  coord_sf(datum = st_crs(32612))  # Plot camera_buffer with transparent fill
-  #annotation_scale(location = "br", width_hint = 0.1)   # Add scale bar to the bottom-right corner
-  #annotation_north_arrow(location = "tr", 
-                         #width = unit(1, "in"), height = unit(1, "in") 
-
-                          
 
 # Compute distances from each camera trap to the nearest esker
 camera_locations <- camera_locations %>%
@@ -897,14 +885,6 @@ if (st_crs(TDN_boundary) != st_crs(nwt_boundary_row7))
 # Step 3: Crop the TDN_Boundary using st_intersection
 cropped_TDN_Boundary <- st_intersection(TDN_boundary, nwt_boundary_row7)
 
-# Plot with ggplot, adding basemap using ggspatial
-ggplot() +
-  ggspatial::annotation_map_tile(zoom = 2) +  # Add OpenStreetMap basemap (adjust zoom for resolution)
-  geom_sf(data = nwt_boundary_row7, color = "blue", fill = "lightblue", alpha = 0.5) +  # Plot row 7 of nwt_boundary
-  geom_sf(data = cropped_TDN_Boundary, color = "red", fill = "lightcoral", alpha = 0.5) +  # Plot cropped TDN_Boundary
-  theme_minimal() +
-  labs(title = "Cropped TDN_Boundary within nwt_boundary Row 7")
-
 
 ##############################################################
 #trying to see what habitats grizzlies and gray wolves are spending the most time in
@@ -929,7 +909,7 @@ most_detected_habitat <- as.data.frame(most_detected_habitat)
 
 # Step 2: Summarize the detections by species and habitat type
 most_detected_habitat_summary <- most_detected_habitat %>%
-  dplyr::select(grizzly_bear, gray_wolf, Muskox, habitat_type, n_days_effort) %>%  # Explicitly use dplyr::select()
+  dplyr::select(grizzly_bear, gray_wolf, Muskox, habitat_type, n_days_effort, location) %>%  # Explicitly use dplyr::select()
   group_by(habitat_type) %>%
   summarise(grizzly_abund = sum(grizzly_bear)/sum(n_days_effort)*1000,
             wolf_abund = sum(gray_wolf)/sum(n_days_effort)*1000,
@@ -939,16 +919,16 @@ most_detected_habitat_summary <- most_detected_habitat %>%
 write_xlsx(most_detected_habitat_summary, "most_detected_habitat_summary.xlsx")
 
 #filtering out just muskox sightings
-data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
+data <- species_all %>% mutate(image_date = as_date(image_date_time), year_month = floor_date(image_date, "month"))  %>%
   filter(species_common_name %in% c("Muskox", "Grizzly Bear", "Gray Wolf")) %>% #if I want to filter by a species
-  mutate(week = week(date), #if I want to create a column with week number
-         month = month(date),
-         year = year(date),
+  mutate(week = week(image_date), #if I want to create a column with week number
+         month = month(image_date),
+         year = year(image_date),
          individual_count = as.numeric(individual_count))
 
 #averaging muskox detections by week
 total_data <- data %>% 
-  group_by(date, month, location, species_common_name) %>%
+  group_by(image_date, month, location, species_common_name) %>%
   summarise(date_count = max(individual_count)) %>%
   group_by(location, species_common_name) %>%
   summarise(total_count = mean(date_count) * 7)
@@ -961,9 +941,10 @@ total_data_cameras <- merge(total_data, TDN_Cameras, by="location")
 total_data_cameras_SF <-st_as_sf(total_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 #data_cameras_SF <- st_as_sf(data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 
+#plotting species abundance by SCANFI landcover type 
 ggplot() +
   geom_sf(data=TDN_boundary %>% st_transform(32612), aes(geometry = geometry), fill = NA, color = "black", size = 20) +
-  tidyterra::geom_spatraster(data = SCANFI_landcover_cropped) +
+  tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
   geom_sf(data=total_data_cameras_SF %>% st_transform(32612), aes(geometry = geometry, size=total_count)) +
   facet_wrap(~species_common_name, nrow = 1) +
   theme_minimal() +
@@ -971,7 +952,29 @@ ggplot() +
     axis.text = element_blank(),
     axis.title = element_blank(),
     panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank())
+    panel.grid.minor = element_blank()) +
+  ggtitle("Species Abundance by Landcover Type")  # Add the title
+
+#trying to plot cropped_SCANFI_TDN_Boundary and camera_locations together 
+
+
+# Ensure data is in sf format
+cropped_SCANFI_TDN_Boundary_sf <- st_as_sf(cropped_SCANFI_TDN_Boundary)
+camera_locations_sf <- st_as_sf(camera_locations)
+
+# Plot the data
+ggplot() +
+  geom_sf(data = cropped_SCANFI_TDN_Boundary, fill = "lightblue", color = "black") +  # First dataset
+  geom_sf(data = camera_locations_sf, color = "red", size = 3, aes(geometry = geometry)) +  # Second dataset
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  ggtitle("Plot of cropped_SCANFI_TDN_boundary and camera_locations")
+
 
 #trying to plot most_detected_habitat_summary
 ggplot() +
@@ -1031,6 +1034,44 @@ ggplot(most_detected_habitat_summary) +
     labs(x = "Landcover Type", y = "Wolf Abundance", title = "Wolf Abundance by Landcover Type") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels if needed
+  
+#trying to make one bar graph with all 3 species
+  
+  # Reshape the data into long format
+  most_detected_habitat_summary_long <- most_detected_habitat_summary %>%
+    pivot_longer(cols = c(grizzly_abund, muskox_abund, wolf_abund),
+                 names_to = "species",
+                 values_to = "abundance")
+  
+  # Create a bar plot with different colors for each species
+  ggplot(most_detected_habitat_summary_long, aes(x = habitat_type, y = abundance, fill = species)) +
+    geom_bar(stat = "identity", position = "dodge", width = 0.7) +  # Bar width adjusted
+    scale_fill_manual(values = c("grizzly_abund" = "cornflowerblue", 
+                                 "muskox_abund" = "skyblue", 
+                                 "wolf_abund" = "lightgreen")) +  # Custom colors
+    labs(x = "Landcover Type", y = "Abundance", title = "Abundance by Species and Landcover Type") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels if needed
+         
+  
+  ggplot(most_detected_habitat_summary_long, aes(x = habitat_type, y = abundance, fill = species)) +
+    geom_bar(stat = "identity", position = "dodge", width = 0.7) +  # Bar width adjusted
+    scale_fill_manual(values = c("grizzly_abund" = "burlywood4", 
+                                 "muskox_abund" = "darkolivegreen", 
+                                 "wolf_abund" = "darkslategray")) +  # Custom colors
+    labs(x = "Landcover Type", y = "Abundance", title = "Abundance by Species and Landcover Type") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 15, hjust = 1)) %>%  # Rotate x-axis labels if needed
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
+      axis.title.x = element_text(size = 14, face = "bold"),  # Make x-axis label thicker
+      axis.title.y = element_text(size = 14, face = "bold"),  # Make y-axis label thicker
+      plot.title = element_text(size = 16, face = "bold")  # Make title thicker
+    )
+  
+  
+  
+  
   
   
   
