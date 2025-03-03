@@ -958,14 +958,18 @@ ggplot() +
 #trying to plot cropped_SCANFI_TDN_Boundary and camera_locations together 
 
 
+# Assuming cropped_SCANFI_TDN_Boundary is a SpatRaster
+# Convert the raster to a data frame for plotting
+cropped_scanfi_df <- as.data.frame(cropped_SCANFI_TDN_Boundary, xy = TRUE)
+comb_overlap_SCANFI_and_selected_mammals_week_df <- as.data.frame(comb_overlap_SCANFI_and_selected_mammals_week, xy = TRUE)
 # Ensure data is in sf format
-cropped_SCANFI_TDN_Boundary_sf <- st_as_sf(cropped_SCANFI_TDN_Boundary)
+cropped_SCANFI_TDN_Boundary_sf <- st_as_sf(cropped_scanfi_df)
 camera_locations_sf <- st_as_sf(camera_locations)
 
-# Plot the data
 ggplot() +
-  geom_sf(data = cropped_SCANFI_TDN_Boundary, fill = "lightblue", color = "black") +  # First dataset
-  geom_sf(data = camera_locations_sf, color = "red", size = 3, aes(geometry = geometry)) +  # Second dataset
+  tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +  # First dataset (raster converted to sf)
+  geom_sf(data = camera_locations, color = "red", size = 3) +  # Second dataset (entire sf object, not just geometry)
+  geom_sf(data = comb_overlap_SCANFI_and_selected_mammals_week_df$Muskox)
   theme_minimal() +
   theme(
     axis.text = element_blank(),
@@ -974,7 +978,6 @@ ggplot() +
     panel.grid.minor = element_blank()
   ) +
   ggtitle("Plot of cropped_SCANFI_TDN_boundary and camera_locations")
-
 
 #trying to plot most_detected_habitat_summary
 ggplot() +

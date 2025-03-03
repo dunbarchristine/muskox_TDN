@@ -133,7 +133,7 @@ plot(SCANFI_landcover_cropped)
 
 
 cropped_SCANFI_TDN_Boundary <- crop(SCANFI_landcover_cropped, TDN_boundary, mask = TRUE)
-plot(cropped_SCANFI_TDN_Boundary) 
+plot(cropped_SCANFI_TDN_Boundary)
 plot(TDN_boundary)
 
 Camera_buffer_zones <- rasterize(vect(camera_buffer), SCANFI_landcover_cropped, field = "location") 
