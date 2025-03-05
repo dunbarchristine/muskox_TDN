@@ -74,7 +74,7 @@ summarised_week <- wt_summarise_cam(
 
 # Select the first and second columns
 selected_mammals_week <- summarised_week %>%
-  dplyr::select(2,3,4,5,28,31,41)
+  dplyr::select(2,3,4,5,14,28,31,41)
 
 
 # Extract last 2 characters from the 'location' column because it is the camera site and create a new column 'camera'
@@ -92,6 +92,7 @@ selected_mammals_week <- selected_mammals_week%>%
 
 selected_mammals_week <- selected_mammals_week%>%
   rename("grizzly_bear" = "Grizzly Bear")
+
 
 #loading in tdn boundary
 
