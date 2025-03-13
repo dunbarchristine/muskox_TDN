@@ -15,7 +15,7 @@ TDN_Cameras<-read_csv("~/Desktop/Analysis/Learning/learning/raw data/NWTBM_Thaid
 TDN2 <-TDN_Cameras %>% 
   filter(!is.na(latitude)) %>% 
   st_as_sf(coords=c("longitude", "latitude"), crs=4326, remove=FALSE) %>% 
-  st_transform(st_crs(tdn_boundary))
+  st_transform(st_crs(TDN_boundary))
 
 #TDN_Cameras2 <- st_as_sf(TDN_Cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 
@@ -43,14 +43,14 @@ TDN2$site <- substr(TDN2$location, 1, 11)
 paste(length(unique(TDN2$site)))
 
 #loading station habitat csv file
-TDN_Habitat<-read_csv("TDN_habitat_site.csv")
+TDN_Habitat<-read_csv("~/Desktop/Analysis/Learning/learning/raw data/TDN_habitat_site.csv")
 
 #merge habitat file into camera file
 TDN_Cameras_Habitat <- merge (TDN2, TDN_Habitat, by="site")
 
 #plot boundary with cameras coloured by habitat
 ggplot() +
-  geom_sf(data = tdn_boundary$geometry) +
+  geom_sf(data = TDN_boundary$geometry) +
   geom_sf(data = TDN_Cameras_Habitat$geometry, aes(color = TDN_Cameras_Habitat$habitat), size = 3) +
   theme_minimal() +
   theme(
@@ -85,11 +85,14 @@ month_data_cameras <- merge(month_data, TDN_Cameras, by="location")
 
 #converting to sf objects
 month_data_cameras_SF <-st_as_sf(month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
-data_cameras_SF <- st_as_sf(data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
+data_cameras_SF <- st_as_sf(data_cameras, coords=c("longitude.x", "latitude.x"), crs=4326, remove=FALSE)
+
+colnames(data_cameras)
+
 
 #Muskox count by month
 ggplot() +
-  geom_sf(data=tdn_boundary) +
+  geom_sf(data=TDN_boundary) +
   geom_sf(data=month_data_cameras_SF, aes(geometry = geometry, size=month_count)) +
   facet_wrap(~month, nrow = 4) +
   theme_minimal() +
@@ -103,7 +106,7 @@ ggplot() +
 #muskox count by month with habitat layer
 
 ggplot() +
-  geom_sf(data=tdn_boundary) +
+  geom_sf(data=TDN_boundary) +
   geom_sf(data=month_data_cameras_SF, aes(geometry = geometry, size=month_count)) +
   geom_sf(data = TDN_Cameras_Habitat$geometry, color = TDN_Cameras_Habitat$habitat, size = 3) +
   facet_wrap(~month, nrow = 4) +
@@ -114,6 +117,17 @@ ggplot() +
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank())
 
+ggplot() +
+  geom_sf(data = TDN_boundary) +
+  geom_sf(data = month_data_cameras_SF, aes(geometry = geometry, size = month_count)) +
+  geom_sf(data = TDN_Cameras_Habitat, aes(geometry = geometry, color = habitat), size = 1) +  # Apply 'color' directly within aes()
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
 
 
 #convert TDN habitat to an SF object so we can plot it 
@@ -165,6 +179,22 @@ ggplot(data=data_cameras_SF) +
     axis.title = element_blank(),
     panel.grid.minor = element_blank()) 
 
+
+
+ggplot(data = data_cameras_SF) +
+  geom_sf(data = tdn_boundary) +
+  geom_sf(data = water_polygon, fill = 'light blue') +
+  geom_sf(data = treeline_polygon, color = 'red') +
+  geom_sf(aes(size = individual_count, colour = habitat)) +
+  # Assuming SCFI_landcover_cropped is a column in data_cameras_SF
+  geom_sf(aes(fill = SCANFI_landcover_cropped)) +
+  scale_fill_manual(values = coltab$cover) +  # Apply custom colors using coltab
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.minor = element_blank())
 
 #this package has the github function
 install.packages("devtools")
