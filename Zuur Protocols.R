@@ -6,12 +6,12 @@
 
 
 #looking for explanatory variable outliers
-comb_overlap_SCANFI_and_selected_mammals_week |> 
+combined_variables_and_fire |> 
   mutate(distance_to_esker_m = as.numeric(distance_to_esker_m)) %>%
-  dplyr::select(c(`Treed broadleaf`, `Treed conifer`, `Treed mixed`, Bryoid, Shrub, Water, Herbs, gray_wolf, grizzly_bear, elevation, distance_to_esker_m, fire_age, fire_prop, fire_presence_or_absence)) %>%
-  pivot_longer(cols = c(`Treed broadleaf`, `Treed conifer`, `Treed mixed`, Bryoid, Shrub, Water, Herbs, gray_wolf, grizzly_bear, elevation, distance_to_esker_m, fire_age, fire_prop, fire_presence_or_absence)) |> 
+  dplyr::select(c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "Gray Wolf", "Grizzly Bear", "Barren-ground Caribou", "elevation", "distance_to_esker_m", "fire_age0", "fire_age1", "fire_age2", "fire_age3")) %>%
+  pivot_longer(cols = c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Water", "Shrub", "Herbs", "Gray Wolf", "Grizzly Bear", "Barren-ground Caribou", "elevation", "distance_to_esker_m", "fire_age0", "fire_age1", "fire_age2", "fire_age3")) |> 
   ggplot() +
-  geom_point(aes(x = value, y = rep(1:nrow(comb_overlap_SCANFI_and_selected_mammals_week), each = n_distinct(name)))) +
+  geom_point(aes(x = value, y = rep(1:nrow(combined_variables_and_fire), each = n_distinct(name)))) +
   #geom_point(aes(x = value, y = name)) +
   facet_wrap(~ name, scales = "free") +
   labs(x = "Value of the variable",
@@ -19,29 +19,29 @@ comb_overlap_SCANFI_and_selected_mammals_week |>
   theme_bw()
 
 #looking for muskox outliers
-comb_overlap_SCANFI_and_selected_mammals_week |> 
+combined_variables_and_fire |> 
   #mutate(distance_to_esker_m = as.numeric(distance_to_esker_m)) %>%
   dplyr::select(c(Muskox)) %>%
   pivot_longer(cols = c(Muskox)) |> 
   ggplot() +
-  geom_point(aes(x = value, y = rep(1:nrow(comb_overlap_SCANFI_and_selected_mammals_week), each = 1))) +
+  geom_point(aes(x = value, y = rep(1:nrow(combined_variables_and_fire), each = 1))) +
   facet_wrap(~ name, scales = "free") +
   labs(x = "Value of the variable",
        y = "Order of the data") +
   theme_bw()
 
 #looking at homogeneity for variance
-comb_overlap_SCANFI_and_selected_mammals_week |> 
+combined_variables_and_fire |> 
   ggplot() +
   geom_boxplot(aes(y = Muskox, x = cluster)) +
   theme_bw()
 
 
 #What are the relationships between Y and X variables?
-Z <- as.vector(as.matrix(comb_overlap_SCANFI_and_selected_mammals_week[, c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "elevation", "distance_to_esker")]))
-Y10 <- rep(comb_overlap_SCANFI_and_selected_mammals_week$Muskox, 11)
-MyNames <- names(comb_overlap_SCANFI_and_selected_mammals_week[,c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "elevation", "distance_to_esker")])
-ID10 <- rep(MyNames, each = length(comb_overlap_SCANFI_and_selected_mammals_week$Muskox))
+Z <- as.vector(as.matrix(combined_variables_and_fire[, c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "Gray Wolf", "Grizzly Bear", "Barren-ground Caribou", "elevation", "distance_to_esker_m", "fire_age0", "fire_age1", "fire_age2", "fire_age3")]))
+Y10 <- rep(combined_variables_and_fire$Muskox, 16)
+MyNames <- names(combined_variables_and_fire[,c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "Gray Wolf", "Grizzly Bear", "Barren-ground Caribou", "elevation", "distance_to_esker_m", "fire_age0", "fire_age1", "fire_age2", "fire_age3")])
+ID10 <- rep(MyNames, each = length(combined_variables_and_fire$Muskox))
 tibble(response = Y10, vars = Z, varnames = ID10) %>%
   ggplot(aes(x = vars, y = response)) +
   geom_point() +

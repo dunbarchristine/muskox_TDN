@@ -101,8 +101,6 @@ TDN_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles
 
 tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/SPECIES_ALL_LIST.csv")
 
-#loading in camera locations
-
 camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
   drop_na("longitude") %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
@@ -138,10 +136,6 @@ plot(cropped_SCANFI_TDN_Boundary)
 plot(TDN_boundary)
 
 fire_rast_cropped_TDN <- crop(fire_rast, TDN_boundary, mask = TRUE)
-  
-
-
-
 plot(fire_rast_cropped_TDN)
 
 Camera_buffer_zones <- rasterize(vect(camera_buffer), SCANFI_landcover_cropped, field = "location") 
