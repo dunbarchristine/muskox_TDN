@@ -23,7 +23,7 @@ plot(camera_buffer$geometry, add = TRUE)
 esker_data <- esker_data[!st_is_empty(esker_data), ]
 
 # Remove the Z dimension
-esker_data <- st_zm(esker_data) %>%
+esker_data_cropped <- st_zm(esker_data) %>%
   st_transform(32612) %>%
   st_intersection(camera_buffer_bb)
 
@@ -37,43 +37,10 @@ plot(esker_data)
 
 #getting distance between cameras and eskers
 
-rast <- terra::rast(esker_data, resolution = 30)
-esker_dist <- distance(rast, esker_data)
+rast <- terra::rast(esker_data_cropped, resolution = 30)
+esker_rast <- rasterize(esker_data_cropped, rast)
+esker_dist <- distance(esker_rast)
 
-plot(rast)
-
-plot(log(esker_dist))
-
-#trying to overlay tdn boundary on esker_data map
-# Check CRS of both objects
-st_crs(esker_data)
-st_crs(TDN_boundary)
-
-# If they differ, transform one to the other
-TDN_boundary_eskers <- st_transform(TDN_boundary, st_crs(esker_data))
-
-# Plot esker_data first
-plot(esker_data$geometry)
-
-# Plot TDN_boundary next, ensuring it's in the same CRS
-plot(TDN_boundary, add = TRUE)
-
-#then add buffers
-plot(camera_locations$geometry, add = TRUE)
-
-# Compute distances from each camera trap to the nearest esker
-camera_locations <- camera_locations %>%
-  rowwise() %>%
-  mutate(distance_to_esker = min(st_distance(geometry, esker_data$geometry))) %>%
-  ungroup()
-
-# View the results
-print(camera_locations)
-
-#plot(esker_data$geometry) %>%
-#plot(TDN_boundary, add = TRUE)
-
-#trying to create elevation map using ArcticDEM (code from erics github)
 
 #Load tdn boundary data
 # Assign a CRS (replace with the correct CRS)
@@ -89,10 +56,9 @@ plot(st_geometry(camera_locations),add = TRUE)
 
 #trying to make table with elevation for each camera location 
 
-# Assuming 'dem_cropped' is the cropped DEM and 'camera_locations' is an sf object of camera locations
-
 # Extract elevation values for each camera location
 elevations <- extract(dem_cropped, camera_locations)
+esker_camera_distances <- extract(esker_dist, camera_locations)
 
 # Combine the camera locations data with the extracted elevation values
 # Convert camera_locations to a data frame if it's an sf object
@@ -100,14 +66,28 @@ camera_locations_df <- st_as_sf(camera_locations) %>%
   st_drop_geometry()  # Remove geometry to get a regular data frame
 
 # Combine the extracted elevations with the camera location data
-camera_locations_df$elevation <- elevation
+camera_locations_df$elevations <- elevations
+camera_locations_df$esker_camera_distances <- esker_camera_distances$layer
 
-# Print the resulting table
-print(camera_locations_df)
 
+#combining distance to eskers column to comb_overlap_SCANFI_and_selected_mammals_week
+
+# Remove specific columns and rename 'elevations.y' to 'elevation'
+adding_variables_elevations_eskers <- adding_variables_elevations_eskers %>%
+  dplyr::select(-c(elevation.x, elevation.y, elevations.x)) %>%
+  rename(elevation = elevations.y)
+
+
+# Merge the datasets based on 'camera_id'
+adding_variables_elevations_eskers <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
+                                                       camera_locations_df[, c("location", "elevations", "esker_camera_distances")], 
+                                                       by = "location", 
+                                                       all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
+
+
+st_write(camera_locations, "SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_repo.shp")
 
 #making inset nwt boundary 
-
 # Download landmass data for the entire world from the naturalearth and naturalearthdata packages
 world_landmass <- ne_countries(scale = "medium", returnclass = "sf") %>%
   st_transform(st_crs(Canada_Boundaries))
