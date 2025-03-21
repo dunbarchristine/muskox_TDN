@@ -11,14 +11,31 @@
 #remotes::install_github("ABbiodiversity/wildrtrax", force = TRUE)
 
 #load the package
+install.packages("writexl")
+install.packages("ggplot2")
+install.packages("ggspatial")
+install.packages("sf")
+install.packages("prettymapr")
+install.packages("rnaturalearth")
+install.packages("rnaturalearthdata")
+
+
 library(devtools)
 library(wildrtrax)
 library(dplyr)
-library(sf)
-library(terra)
 library(png)
-library(tidyverse)
+library(writexl)
+library(RColorBrewer)
+library(terra)
 library(raster)
+library(ggspatial)
+library(sf)
+library(prettymapr)
+library(grid)
+library(tidyverse)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(tidyterra)
 
 setwd("~/Desktop/Analysis/Learning/learning/spatial")
 
@@ -106,15 +123,10 @@ camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/SpeciesRawDat
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
   st_transform(32612) #this number corresponds to the epsg code for utm code 12
 
-plot(camera_locations)
-
 #creating 300 m buffers for cameras
 camera_buffer <- st_buffer(camera_locations, 300)
-plot(camera_buffer)
 
 SCANFI_landcover <- rast("~/Desktop/Analysis/Learning/learning/raw data/SCANFI_att_nfiLandCover_SW_2020_v1.2.tif")
-
-plot(SCANFI_landcover)
 
 SCANFI_landcover_cropped <- crop(SCANFI_landcover, TDN_boundary %>% st_transform(crs(SCANFI_landcover))) %>% 
   project("EPSG:32612", method = "near") #SCANFI_landcover_cropped is the scanfi data with the camera buffers
@@ -128,18 +140,14 @@ levels(SCANFI_landcover_cropped) <- cats
 coltab(SCANFI_landcover_cropped) <- coltab
 writeRaster(SCANFI_landcover_cropped, "spatial/SCANFI_landcover_cropped.tif", datatype = "INT1U", overwrite=TRUE)
 SCANFI_landcover_cropped <- rast("spatial/SCANFI_landcover_cropped.tif")
-plot(SCANFI_landcover_cropped)  
+
 
 
 cropped_SCANFI_TDN_Boundary <- crop(SCANFI_landcover_cropped, TDN_boundary, mask = TRUE)
-plot(cropped_SCANFI_TDN_Boundary)
-plot(TDN_boundary)
 
 fire_rast_cropped_TDN <- crop(fire_rast, TDN_boundary, mask = TRUE)
-plot(fire_rast_cropped_TDN)
 
 Camera_buffer_zones <- rasterize(vect(camera_buffer), SCANFI_landcover_cropped, field = "location") 
-plot(Camera_buffer_zones) 
 
 overlap_SCANFI_cameras <- crosstab(c(Camera_buffer_zones, SCANFI_landcover_cropped), long = TRUE) 
 

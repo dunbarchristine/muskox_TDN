@@ -13,12 +13,6 @@ camera_buffer_bb <- camera_buffer %>%
   st_bbox() %>%
   st_as_sfc()
 
-plot(camera_buffer_bb)
-# Then add TDN_boundary
-plot(TDN_boundary, add = TRUE)
-#then add buffers
-plot(camera_buffer$geometry, add = TRUE)
-
 # Remove empty geometries
 esker_data <- esker_data[!st_is_empty(esker_data), ]
 
@@ -26,13 +20,6 @@ esker_data <- esker_data[!st_is_empty(esker_data), ]
 esker_data_cropped <- st_zm(esker_data) %>%
   st_transform(32612) %>%
   st_intersection(camera_buffer_bb)
-
-plot(esker_data)
-
-# Rasterize
-# Assuming 'esker_sp' is already a SpatialLinesDataFrame or a SpatVector
-# Make sure it is a SpatVector
-#esker_sp <- vect(esker_sp)
 
 
 #getting distance between cameras and eskers
@@ -57,8 +44,8 @@ plot(st_geometry(camera_locations),add = TRUE)
 #trying to make table with elevation for each camera location 
 
 # Extract elevation values for each camera location
-elevations <- extract(dem_cropped, camera_locations)
-esker_camera_distances <- extract(esker_dist, camera_locations)
+elevations <- raster::extract(dem_cropped, camera_locations)
+esker_camera_distances <- terra::extract(esker_dist, camera_locations)
 
 # Combine the camera locations data with the extracted elevation values
 # Convert camera_locations to a data frame if it's an sf object
@@ -72,17 +59,16 @@ camera_locations_df$esker_camera_distances <- esker_camera_distances$layer
 
 #combining distance to eskers column to comb_overlap_SCANFI_and_selected_mammals_week
 
-# Remove specific columns and rename 'elevations.y' to 'elevation'
-adding_variables_elevations_eskers <- adding_variables_elevations_eskers %>%
-  dplyr::select(-c(elevation.x, elevation.y, elevations.x)) %>%
-  rename(elevation = elevations.y)
-
-
 # Merge the datasets based on 'camera_id'
 adding_variables_elevations_eskers <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
                                                        camera_locations_df[, c("location", "elevations", "esker_camera_distances")], 
                                                        by = "location", 
                                                        all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
+
+# # Remove specific columns and rename 'elevations.y' to 'elevation'
+# adding_variables_elevations_eskers <- adding_variables_elevations_eskers %>%
+#   dplyr::select(-c(elevation.x, elevation.y, elevations.x)) %>%
+#   rename(elevation = elevations.y)
 
 
 st_write(camera_locations, "SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_repo.shp")

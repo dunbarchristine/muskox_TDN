@@ -6,12 +6,12 @@
 
 
 #looking for explanatory variable outliers
-combined_variables_and_fire |> 
-  mutate(distance_to_esker_m = as.numeric(distance_to_esker_m)) %>%
-  dplyr::select(c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "Gray Wolf", "Grizzly Bear", "Barren-ground Caribou", "elevation", "distance_to_esker_m", "fire_age0", "fire_age1", "fire_age2", "fire_age3")) %>%
-  pivot_longer(cols = c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Water", "Shrub", "Herbs", "Gray Wolf", "Grizzly Bear", "Barren-ground Caribou", "elevation", "distance_to_esker_m", "fire_age0", "fire_age1", "fire_age2", "fire_age3")) |> 
+all_variables |> 
+  mutate(log_esker_camera_distances = as.numeric(esker_camera_distances)) %>%
+  dplyr::select(c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs","gray_wolf", "grizzly_bear","Barren-ground Caribou", "elevations", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4")) %>%
+  pivot_longer(cols = c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Water", "Shrub", "Herbs", "gray_wolf", "grizzly_bear","Barren-ground Caribou", "elevations", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4")) |> 
   ggplot() +
-  geom_point(aes(x = value, y = rep(1:nrow(combined_variables_and_fire), each = n_distinct(name)))) +
+  geom_point(aes(x = value, y = rep(1:nrow(all_variables), each = n_distinct(name)))) +
   #geom_point(aes(x = value, y = name)) +
   facet_wrap(~ name, scales = "free") +
   labs(x = "Value of the variable",
@@ -19,29 +19,29 @@ combined_variables_and_fire |>
   theme_bw()
 
 #looking for muskox outliers
-combined_variables_and_fire |> 
+all_variables |> 
   #mutate(distance_to_esker_m = as.numeric(distance_to_esker_m)) %>%
   dplyr::select(c(Muskox)) %>%
   pivot_longer(cols = c(Muskox)) |> 
   ggplot() +
-  geom_point(aes(x = value, y = rep(1:nrow(combined_variables_and_fire), each = 1))) +
+  geom_point(aes(x = value, y = rep(1:nrow(all_variables), each = 1))) +
   facet_wrap(~ name, scales = "free") +
   labs(x = "Value of the variable",
        y = "Order of the data") +
   theme_bw()
 
 #looking at homogeneity for variance
-combined_variables_and_fire |> 
+all_variables |> 
   ggplot() +
   geom_boxplot(aes(y = Muskox, x = cluster)) +
   theme_bw()
 
 
 #What are the relationships between Y and X variables?
-Z <- as.vector(as.matrix(combined_variables_and_fire[, c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "Gray Wolf", "Grizzly Bear", "Barren-ground Caribou", "elevation", "distance_to_esker_m", "fire_age0", "fire_age1", "fire_age2", "fire_age3")]))
-Y10 <- rep(combined_variables_and_fire$Muskox, 16)
-MyNames <- names(combined_variables_and_fire[,c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "Gray Wolf", "Grizzly Bear", "Barren-ground Caribou", "elevation", "distance_to_esker_m", "fire_age0", "fire_age1", "fire_age2", "fire_age3")])
-ID10 <- rep(MyNames, each = length(combined_variables_and_fire$Muskox))
+Z <- as.vector(as.matrix(all_variables[, c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Barren-ground Caribou", "elevations", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4")]))
+Y10 <- rep(all_variables$Muskox, 17)
+MyNames <- names(all_variables[,c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Barren-ground Caribou", "elevations", "esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4")])
+ID10 <- rep(MyNames, each = length(all_variables$Muskox))
 tibble(response = Y10, vars = Z, varnames = ID10) %>%
   ggplot(aes(x = vars, y = response)) +
   geom_point() +
@@ -56,11 +56,17 @@ temp <- tibble(response = Y10, vars = Z, varnames = ID10) %>%
     TRUE ~ ">50"
   ))
 
-combined_variables_and_fire %>%
-  mutate(log_distance_to_esker = log(distance_to_esker)) %>%
-  dplyr::select("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Water", "Herbs", "Gray Wolf", "Grizzly Bear", "elevation", "log_distance_to_esker", "fire_age0", "fire_age1", "fire_age2", "fire_age3") %>%
+all_variables %>%
+  ungroup() %>%
+  mutate(log_esker_camera_distances = log(esker_camera_distances + 1)) %>%
+  dplyr::select("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Barren-ground Caribou", "elevations", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4") %>%
   cor()
 
+#running a correlation test with dataset "variables_only". This dataset includes just the variables I will be using in my models, not including location, camera cluster, year, week, etc.
+
+# Compute the correlation matrix for all numeric variables in 'variables_only'
+cor_matrix <- cor(variables_only, use = "complete.obs") #complete.obs ensures that only complete cases (rows with no missing values) are used to compute the correlation.
+print(cor_matrix)
 
 
 
