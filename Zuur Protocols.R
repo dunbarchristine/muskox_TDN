@@ -4,7 +4,6 @@
 #checking data with protocols from zuur et al. 2010
 
 
-
 #looking for explanatory variable outliers
 all_variables |> 
   mutate(log_esker_camera_distances = as.numeric(esker_camera_distances)) %>%
@@ -66,7 +65,10 @@ all_variables %>%
 
 # Compute the correlation matrix for all numeric variables in 'variables_only'
 cor_matrix <- cor(variables_only, use = "complete.obs") #complete.obs ensures that only complete cases (rows with no missing values) are used to compute the correlation.
-print(cor_matrix)
+
+#comparing scanfi and lcc to determine which landcover dataset to use/justification for choosing lc/scanfi
+lcc_scanfi_cor <- cor(lcc_cameras_prop_columns_variables_only, overlap_SCANFI_cameras_table_variables_only)
+
 
 
 

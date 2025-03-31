@@ -44,26 +44,29 @@ mod_nb2 <- glmer.nb(Muskox ~ grizzly_per_day + gray_wolf_per_day +
                     data = all_variables)
 
 #food model
-mod_nb3 <- glmer.nb(Muskox ~ Bryoid + Shrub + Herbs + Treed_broadleaf +
+mod_nb3 <- glmer.nb(Muskox ~ Bryoid + Shrub + Herbs + Treed_broadleaf + fire_age1 + fire_age2 + fire_age3 + fire_age4 +
                       offset(log(n_days_effort)) +
                       (1|cluster/location),
                     data = all_variables)
 
 #thermoregulation model
-mod_nb4 <- glmer.nb(Muskox ~ Treed_conifer + Treed_broadleaf + Treed_mixed + elevations + log_esker_camera_distances +
+mod_nb4 <- glmer.nb(Muskox ~ Treed_conifer + Treed_broadleaf + Treed_mixed + elevations + log_esker_camera_distances + fire_age0 + fire_age1 + fire_age2 + fire_age3 + fire_age4 +
                       offset(log(n_days_effort)) +
                       (1|cluster/location),
                     data = all_variables)
 
+#running everything together just to see if it runs 
+mod_nb5 <- 
+
 fmList<-model.sel(mod_nb1=mod_nb1, mod_nb2=mod_nb2, mod_nb3=mod_nb3, mod_nb4=mod_nb4)
 fmList
 
-summary(be4)
+summary()
 
 
 
 
-#trying more simple model :(
+#trying more simple model because some of the previous ones did not run
 #making null model
 mod_1 <- glmer(Muskox ~ 1+
                       offset(log(n_days_effort)) +
@@ -71,7 +74,7 @@ mod_1 <- glmer(Muskox ~ 1+
                     data = all_variables)
 
 #predation model
-mod_2 <- glmer(Muskox ~ grizzly_per_day + gray_wolf_per_day + 
+mod_2 <- glmer(Muskox ~ grizzly_per_day + gray_wolf_per_day + Treed_conifer + Treed_broadleaf + treed_mixed + elevations + log_esker_camera_distances +
                       offset(log(n_days_effort)) +
                       (1|cluster/location),
                     data = all_variables)
@@ -198,21 +201,6 @@ mod_nb <- glmer.nb(Muskox ~ grizzly_per_day +
                    data = TDN_camera_clus)
 
 
-
-
-
-
-
-
-
-
-#food hypothesis:
-#variables: shrubs, herbs, treed broadleaf, caribou? (competition)
-
-#thermoregulation hypothesis: 
-#variables: treed conifer, treed broadleaf, treed mixed, 
-
-#predation
 
 
 

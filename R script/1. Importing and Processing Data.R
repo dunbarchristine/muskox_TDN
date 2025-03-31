@@ -20,6 +20,7 @@ install.packages("rnaturalearth")
 install.packages("rnaturalearthdata")
 
 
+library(DHARMa)
 library(devtools)
 library(wildrtrax)
 library(dplyr)
@@ -36,6 +37,8 @@ library(tidyverse)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(tidyterra)
+library(exactextractr)
+library(spatialEco)
 
 setwd("~/Desktop/Analysis/Learning/learning/spatial")
 
@@ -111,10 +114,7 @@ selected_mammals_week <- selected_mammals_week%>%
   rename("grizzly_bear" = "Grizzly Bear")
 
 
-#loading in tdn boundary
-
 TDN_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_Boundary.shp")
-
 
 tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/SPECIES_ALL_LIST.csv")
 
@@ -165,7 +165,9 @@ esker_data <- st_read("spatial/shapefiles/Linear_Surficial_Features_of_Canada_(C
 TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif") #not sure if this worked
 
 #load data
-TDN_DEM<-raster("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif")
+TDN_DEM<- terra::rast("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif")
+
+TDN_TRI <- raster("~/Desktop/Analysis/Learning/learning/spatial/TDN_TRI.aux.xml")
  
 #loading in nfdb shapefiles
 #nfdb <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
@@ -183,10 +185,48 @@ NBAC <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/nbac_19
 
 load("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/nbac_fire_TDN.RData")
 
+landcover_of_canada <- rast("~/Desktop/Analysis/Learning/learning/spatial/landcover_of_canada/landcover-2020-classification.tif")
+
+### load attribute data for land cover values
+lc_atts <- read_csv("~/Desktop/Analysis/Learning/learning/ClassIndex_IndiceDeClasse.csv",
+                    col_names = c("Value", "Classification", "RGB"),
+                    skip = 1) %>%
+  separate(RGB,c("R","G","B"),"; ", convert = TRUE) %>%
+  ### remove french classification and convert rgb to hex
+  mutate(Classification = str_replace_all(Classification, "[^[:alnum:]^/^-]", " "),
+         Classification = str_remove_all(Classification, "/.*"),
+         Classification = fct_reorder(Classification, Value),
+         hex = rgb(R,G,B,maxColorValue = 255))
+saveRDS(lc_atts, "~/Desktop/Analysis/Learning/learning/lc_atts.rds")
+
+lc_cats <- data.frame(ids = lc_atts$Value, cover = lc_atts$Classification)
+lc_coltab <- data.frame(ids = lc_atts$Value, cols = lc_atts$hex)
+
+levels(landcover_of_canada) <- lc_cats
+coltab(landcover_of_canada) <- lc_coltab
+
+landcover_of_canada_cropped <- crop(landcover_of_canada, TDN_boundary %>% st_transform(crs(landcover_of_canada))) %>% 
+  project("EPSG:32612", method = "near")
+
+lcc_camera_buffers <- rasterize(vect(camera_buffer), landcover_of_canada_cropped, field = "location") 
+
+lcc_camera_buffer_prop <- crosstab(c(lcc_camera_buffers, landcover_of_canada_cropped), long = TRUE) 
+
+lcc_cameras_prop_table <- lcc_camera_buffer_prop %>%
+  as_tibble() %>%
+  group_by(location) %>%
+  mutate(landcover_prop = n/sum(n)) #n is the number of pixels for each habitat type divided by all habitat types 
+
+# Spread the data into separate columns for each land cover type
+lcc_cameras_prop_columns <- lcc_cameras_prop_table %>%
+  dplyr::select(-n) %>%  
+  pivot_wider(
+    names_from = cover,  # Create a column for each land cover type
+    values_from = landcover_prop,  # Take values from the 'land_cover_prop' column
+    values_fill = list(landcover_prop = 0))  # Fill missing values with 0 (no land cover)
 
 
-
-
-
+#creating new table with just numeric variables to run correlations
+lcc_cameras_prop_columns_variables_only <- lcc_cameras_prop_columns[, -1]
 
 

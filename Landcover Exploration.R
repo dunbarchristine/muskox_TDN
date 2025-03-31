@@ -1,4 +1,11 @@
 
+
+TRI_results <- spatialEco::tri(TDN_DEM, s = 3, exact = FALSE)
+
+#erics code for TRI
+TDN_tri <- st_transform(TDN_boundary, crs = st_crs(TRI_results))
+
+
 # Check for empty geometries
 esker_data_empty <- esker_data[st_is_empty(esker_data), ]
 esker_data_non_empty <- esker_data[!st_is_empty(esker_data), ]
@@ -34,9 +41,10 @@ esker_dist <- distance(esker_rast)
 # Assign a CRS using EPSG code
 crs(TDN_DEM) <- CRS("+init=epsg:32612")  # Example: EPSG 32633 for UTM Zone 33N
 
-TDN_dem <- st_transform(TDN_boundary, crs = st_crs(TDN_DEM))
+TDN_boundary_projected <- st_transform(TDN_boundary, crs = st_crs(TDN_DEM)) %>%
+  st_buffer(1000)
 
-dem_cropped<-crop(TDN_DEM,TDN_dem)
+dem_cropped<-crop(TDN_DEM,TDN_boundary_projected)
 plot(dem_cropped, axes = FALSE)
 plot(st_geometry(TDN_dem), add = TRUE)
 plot(st_geometry(camera_locations),add = TRUE)
@@ -46,6 +54,8 @@ plot(st_geometry(camera_locations),add = TRUE)
 # Extract elevation values for each camera location
 elevations <- raster::extract(dem_cropped, camera_locations)
 esker_camera_distances <- terra::extract(esker_dist, camera_locations)
+TRI_extracted <- raster::extract(TRI_results, camera_locations)
+
 
 # Combine the camera locations data with the extracted elevation values
 # Convert camera_locations to a data frame if it's an sf object
@@ -55,7 +65,7 @@ camera_locations_df <- st_as_sf(camera_locations) %>%
 # Combine the extracted elevations with the camera location data
 camera_locations_df$elevations <- elevations
 camera_locations_df$esker_camera_distances <- esker_camera_distances$layer
-
+camera_locations_df$TRI_extracted <- TRI_extracted$lyr.1
 
 #combining distance to eskers column to comb_overlap_SCANFI_and_selected_mammals_week
 

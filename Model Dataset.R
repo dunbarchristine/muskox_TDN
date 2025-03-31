@@ -10,6 +10,11 @@ overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras %>%
   group_by(location) %>%
   mutate(landcover_prop = n/sum(n)) #n is the number of pixels for each habitat type divided by all habitat types 
 
+#creating new table with just numeric variables to run correlations
+overlap_SCANFI_cameras_table_variables_only <- overlap_SCANFI_cameras_table[, -1]
+
+
+
 #adding the land cover names column to overlap_SCANFI_cameras_table
 # 
 # overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
@@ -46,6 +51,9 @@ comb_overlap_SCANFI_and_selected_mammals_week<- merge(overlap_SCANFI_cameras_tab
 # Write to Excel
 write_xlsx(comb_overlap_SCANFI_and_selected_mammals_week, "comb_overlap_SCANFI_and_selected_mammals_week.xlsx")
 
+# Convert camera_locations to a data frame if it's an sf object
+camera_locations_df <- st_as_sf(camera_locations) %>%
+  st_drop_geometry() 
 
 # Merge the datasets based on 'camera_id'
 comb_overlap_SCANFI_and_selected_mammals_week <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
@@ -56,10 +64,10 @@ comb_overlap_SCANFI_and_selected_mammals_week <- merge(comb_overlap_SCANFI_and_s
 # Convert tibble to a regular data.frame (if necessary)
 camera_locations_df <- as.data.frame(camera_locations_df)
 
-# Now perform the left join
-comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
-  dplyr::left_join(camera_locations_df %>% dplyr::select(location, distance_to_esker), 
-                   by = "location")
+# # Now perform the left join
+# comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
+#   dplyr::left_join(camera_locations_df %>% dplyr::select(location, distance_to_esker), 
+#                    by = "location")
 
 # # Remove the 'm' and convert to numeric
 # comb_overlap_SCANFI_and_selected_mammals_week$distance_to_esker <- 
@@ -80,16 +88,11 @@ combined_variables_and_fire <- combined_variables_and_fire %>%
 
 variables_only <- all_variables %>%
   ungroup() %>%  # Ungroup the dataset to prevent warnings
-  select(Treed_broadleaf, Treed_conifer, Treed_mixed, Bryoid, Shrub, Water, Herbs,
+  select(`Treed_broadleaf`, `Treed_conifer`, `Treed_mixed`, Bryoid, Shrub, Water, Herbs,
          gray_wolf, grizzly_bear, elevations, esker_camera_distances,
          fire_age0, fire_age1, fire_age2, fire_age3, fire_age4, log_esker_camera_distances,
          grizzly_per_day, gray_wolf_per_day) %>%
   select(-matches("^location$"))
-
-
-
-
-
 
 
 
