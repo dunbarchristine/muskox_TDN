@@ -72,8 +72,36 @@ data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
          year = year(date),
          individual_count = as.numeric(individual_count))
 
+wolf_data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
+  filter(species_common_name == "Gray Wolf") %>% #if I want to filter by a species
+  mutate(week = week(date), #if I want to create a column with week number
+         month = month(date),
+         year = year(date),
+         individual_count = as.numeric(individual_count))
+
+grizzly_data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
+  filter(species_common_name == "Grizzly Bear") %>% #if I want to filter by a species
+  mutate(week = week(date), #if I want to create a column with week number
+         month = month(date),
+         year = year(date),
+         individual_count = as.numeric(individual_count))
+
 #averaging muskox detections by week
 month_data <- data %>% 
+  group_by(date, month, location) %>%
+  summarise(date_count = max(individual_count)) %>%
+  group_by(month, location) %>%
+  summarise(month_count = mean(date_count) * 7)
+
+#averaging wolf detections by week
+avg_wolf_week_data <- wolf_data %>% 
+  group_by(date, month, location) %>%
+  summarise(date_count = max(individual_count)) %>%
+  group_by(month, location) %>%
+  summarise(month_count = mean(date_count) * 7)
+
+#averaging wolf detections by week
+avg_grizzly_week_data <- grizzly_data %>% 
   group_by(date, month, location) %>%
   summarise(date_count = max(individual_count)) %>%
   group_by(month, location) %>%
@@ -83,12 +111,21 @@ month_data <- data %>%
 data_cameras <- merge(data, TDN_Cameras, by="location")
 month_data_cameras <- merge(month_data, TDN_Cameras, by="location")
 
+wolf_cameras <- merge(wolf_data, TDN_Cameras, by="location")
+wolf_month_data_cameras <- merge(avg_wolf_week_data, TDN_Cameras, by="location")
+
+grizzly_cameras <- merge(grizzly_data, TDN_Cameras, by="location")
+grizzly_month_data_cameras <- merge(avg_grizzly_week_data, TDN_Cameras, by="location")
+
 #converting to sf objects
 month_data_cameras_SF <-st_as_sf(month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 data_cameras_SF <- st_as_sf(data_cameras, coords=c("longitude.x", "latitude.x"), crs=4326, remove=FALSE)
 
-colnames(data_cameras)
+wolf_cameras_sf <-st_as_sf(wolf_cameras, coords=c("longitude.x", "latitude.x"), crs=4326, remove=FALSE)
+wolf_month_data_cameras_sf <- st_as_sf(wolf_month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 
+grizzly_cameras_sf <-st_as_sf(grizzly_cameras, coords=c("longitude.x", "latitude.x"), crs=4326, remove=FALSE)
+grizzly_month_data_cameras_sf <- st_as_sf(grizzly_month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 
 #Muskox count by month
 ggplot() +
@@ -101,6 +138,34 @@ ggplot() +
     axis.title = element_blank(),
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank())
+
+
+#wolf count by month
+ggplot() +
+  geom_sf(data=TDN_boundary) +
+  tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+  geom_sf(data=wolf_month_data_cameras_sf, aes(geometry = geometry, size=month_count)) +
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+#grizzly count by month
+ggplot() +
+  geom_sf(data=TDN_boundary) +
+  tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+  geom_sf(data=grizzly_month_data_cameras_sf, aes(geometry = geometry, size=month_count)) +
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
 
 
 #muskox count by month with habitat layer

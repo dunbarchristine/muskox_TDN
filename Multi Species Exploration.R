@@ -113,6 +113,47 @@ ggplot() +
     panel.grid.minor = element_blank()) +
   ggtitle("Species Frequency of Detection by Landcover Type")  # Add the title
 
+#trying to plot gray wolf detections by month with scanfi landcover
+
+ggplot() +
+  geom_sf(data=TDN_boundary %>% st_transform(32612), aes(geometry = geometry), fill = NA, color = "black", size = 20) +
+  geom_sf(data=month_data_cameras_SF, aes(geometry = geometry, size=month_count)) +
+  tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+  geom_sf(data=total_data_cameras_SF %>% st_transform(32612), aes(geometry = geometry, size=total_count)) +
+  facet_wrap(~month, nrow = 4) +
+  #facet_wrap(~species_common_name, nro = 1) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()) +
+  ggtitle("Species Frequency of Detection by Landcover Type") 
+
+
+ggplot() +
+  geom_sf(data=TDN_boundary) +
+  geom_sf(data=month_data_cameras_SF, aes(geometry = geometry, size=month_count)) +
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+
+
+
+
+
+
+
+
+
+
+
+
 #trying to plot muskox frequency of detections by landcover type and season
 ggplot() +
   geom_sf(data=TDN_boundary) +
@@ -333,13 +374,159 @@ ggplot(most_detected_habitat_summary_long, aes(x = habitat_type, y = abundance, 
   )
 
 
+#making monthly maps of species detections by landcover type
+
+#separating out the data by week and month
+species_all$date <- as.Date(species_all$image_date_time, format = "%Y-%m-%d")
+
+#filtering out just muskox sightings
+data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
+  filter(species_common_name == "Muskox") %>% #if I want to filter by a species
+  mutate(week = week(date), #if I want to create a column with week number
+         month = month(date),
+         year = year(date),
+         individual_count = as.numeric(individual_count))
+
+wolf_data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
+  filter(species_common_name == "Gray Wolf") %>% #if I want to filter by a species
+  mutate(week = week(date), #if I want to create a column with week number
+         month = month(date),
+         year = year(date),
+         individual_count = as.numeric(individual_count))
+
+grizzly_data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
+  filter(species_common_name == "Grizzly Bear") %>% #if I want to filter by a species
+  mutate(week = week(date), #if I want to create a column with week number
+         month = month(date),
+         year = year(date),
+         individual_count = as.numeric(individual_count))
+
+#averaging muskox detections by week
+month_data <- data %>% 
+  group_by(date, month, location) %>%
+  summarise(date_count = max(individual_count)) %>%
+  group_by(month, location) %>%
+  summarise(month_count = mean(date_count) * 7)
+
+#averaging wolf detections by week
+avg_wolf_week_data <- wolf_data %>% 
+  group_by(date, month, location) %>%
+  summarise(date_count = max(individual_count)) %>%
+  group_by(month, location) %>%
+  summarise(month_count = mean(date_count) * 7)
+
+#averaging wolf detections by week
+avg_grizzly_week_data <- grizzly_data %>% 
+  group_by(date, month, location) %>%
+  summarise(date_count = max(individual_count)) %>%
+  group_by(month, location) %>%
+  summarise(month_count = mean(date_count) * 7)
+
+#creating data frames to plot from  
+data_cameras <- merge(data, TDN_Cameras, by="location")
+month_data_cameras <- merge(month_data, TDN_Cameras, by="location")
+
+wolf_cameras <- merge(wolf_data, TDN_Cameras, by="location")
+wolf_month_data_cameras <- merge(avg_wolf_week_data, TDN_Cameras, by="location")
+
+grizzly_cameras <- merge(grizzly_data, TDN_Cameras, by="location")
+grizzly_month_data_cameras <- merge(avg_grizzly_week_data, TDN_Cameras, by="location")
+
+#converting to sf objects
+month_data_cameras_SF <-st_as_sf(month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
+data_cameras_SF <- st_as_sf(data_cameras, coords=c("longitude.x", "latitude.x"), crs=4326, remove=FALSE)
+
+wolf_cameras_sf <-st_as_sf(wolf_cameras, coords=c("longitude.x", "latitude.x"), crs=4326, remove=FALSE)
+wolf_month_data_cameras_sf <- st_as_sf(wolf_month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
+
+grizzly_cameras_sf <-st_as_sf(grizzly_cameras, coords=c("longitude.x", "latitude.x"), crs=4326, remove=FALSE)
+grizzly_month_data_cameras_sf <- st_as_sf(grizzly_month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
+
+#Muskox count by month
+ggplot() +
+  geom_sf(data=TDN_boundary) +
+  geom_sf(data=month_data_cameras_SF, aes(geometry = geometry, size=month_count)) +
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+
+#wolf count by month
+ggplot() +
+  geom_sf(data=TDN_boundary) +
+  tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+  geom_sf(data=wolf_month_data_cameras_sf, aes(geometry = geometry, size=month_count)) +
+  geom_sf(data = wolf_month_data_cameras_sf, # Exclude zero counts
+          aes(geometry = geometry,
+              colour = factor(Wolf > 0),
+              size = Moose)) +
+  scale_fill_discrete(name = "Landcover Type") +
+  #scale_color_manual(values = c("TRUE" = "orange", "FALSE" = "black"),
+                     #labels = c("TRUE" = "Yes", "FALSE" = "No"),
+                     #name = "Moose Sighted") +
+  scale_size_continuous(name = "Number of Gray Wolves", range = c(2, 8),
+                        breaks = seq(1, max(wolf_month_data_cameras_sf, na.rm = TRUE), by = 2)) + # Adjust size range
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()) +
+ggtitle("Average Wolf Detections Per Month") +
+  guides(
+    fill = guide_legend(order = 1), # Landcover Type first
+    color = guide_legend(order = 2, override.aes = list(size = 2)), # Gray Wolf Detection second
+    size = guide_legend(order = 3, override.aes = list(colour = "orange")) # Ensures large dots match moose color
+  )
+
+#grizzly count by month
+ggplot() +
+  geom_sf(data=TDN_boundary) +
+  tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+  geom_sf(data=grizzly_month_data_cameras_sf, aes(geometry = geometry, size=month_count)) +
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()) +
+  ggtitle("Average Grizzly Bear Detections Per Month") +
 
 
 
 
 
 
-
-
+moose_map <- ggplot() +
+  geom_sf(data = TDN_ecoregions_2, aes(fill = ECO2_NAM_1), alpha = 0.5) +
+  geom_sf(data = TDN_lakes_rivers, colour = "#6699CC") +
+  geom_sf(data = ind_det_moose_sf, # Exclude zero counts
+          aes(geometry = geometry,
+              colour = factor(Moose > 0),
+              size = Moose)) +
+  scale_fill_discrete(name = "Ecoregion") +
+  scale_color_manual(values = c("TRUE" = "orange", "FALSE" = "black"),
+                     labels = c("TRUE" = "Yes", "FALSE" = "No"),
+                     name = "Moose Sighted") +
+  scale_size_continuous(name = "Number of Moose", range = c(2, 8),
+                        breaks = seq(1, max(ind_det_moose$Moose, na.rm = TRUE), by = 2)) + # Adjust size range
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  guides(
+    fill = guide_legend(order = 1), # Ecoregion first
+    color = guide_legend(order = 2, override.aes = list(size = 2)), # Moose sighting second
+    size = guide_legend(order = 3, override.aes = list(colour = "orange")) # Ensures large dots match moose color
+  )
 
 

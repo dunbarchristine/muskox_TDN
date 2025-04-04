@@ -126,4 +126,16 @@ ggplot() +
     panel.background = element_rect(fill = "transparent", color = NA),  # Transparent panel background
     plot.background = element_rect(fill = "transparent", color = NA))   # Transparent background for the plot area
     
+
+#trying to plot basic SCANFI landcover map for TDN 
+ggplot() +
+  tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(title = "TDN Landcover Types", color = "Habitat")
     
