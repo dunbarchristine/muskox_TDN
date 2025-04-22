@@ -6,6 +6,7 @@ library(vcd)
 library(lme4)
 library(MuMIn)
 library(corrplot)
+library(glmmTMB)
 
 #making a data set summarized across clusters, weeks and years
 TDN_camera_clusters <- comb_overlap_SCANFI_and_selected_mammals_week %>%
@@ -34,37 +35,47 @@ all_variables <- all_variables %>%
 #making null model
 mod_nb1 <- glmer.nb(Muskox ~ 1+
                       offset(log(n_days_effort)) +
-                      (1|cluster/location),
-                    data = all_variables)
+                      (1|cluster),
+                    data = all_variables_season)
 
 #predation model
 mod_nb2 <- glmer.nb(Muskox ~ grizzly_per_day + gray_wolf_per_day + 
                       offset(log(n_days_effort)) +
-                      (1|cluster/location),
-                    data = all_variables)
+                      (1|cluster),
+                    data = all_variables_season)
+DHARMa::testZeroInflation(mod_nb2)
+DHARMa::testDispersion(mod_nb2)
+
 
 #food model
-mod_nb3 <- glmer.nb(Muskox ~ Bryoid + Shrub + Herbs + Treed_broadleaf + fire_age1 + fire_age2 + fire_age3 + fire_age4 +
+#combining fire ages
+mod_3data <- all_variables %>%
+  mutate(fire_age2_3 = fire_age2 + fire_age3, 
+         fire_age0_1 = fire_age0 + fire_age1)
+
+#fire model model for food hypothesis
+mod_nb3 <- glmer.nb(Muskox ~ scale(fire_age2_3) + scale(fire_age0_1) +
                       offset(log(n_days_effort)) +
-                      (1|cluster/location),
+                      (1|cluster), #grouping by five cameras 
+                    data = mod_3data)
+ss <- getME(mod_nb3,c("theta","fixef"))
+m2 <- update(mod_nb3,start=ss,control=glmerControl(optCtrl=list(maxfun=2e4)))
+
+#landcover model for food hypothesis
+mod_nb3.1 <- glmer.nb(Muskox ~ scale(Shrub) + scale(`Treed broadleaf`) +
+                      offset(log(n_days_effort)) +
+                      (1|cluster),
                     data = all_variables)
 
 #thermoregulation model
-mod_nb4 <- glmer.nb(Muskox ~ Treed_conifer + Treed_broadleaf + Treed_mixed + elevations + log_esker_camera_distances + fire_age0 + fire_age1 + fire_age2 + fire_age3 + fire_age4 +
+mod_nb4 <- glmer.nb(Muskox ~ `Treed conifer` + `Treed broadleaf` + `Treed mixed` + elevations + log_esker_camera_distances + fire_age1 + fire_age2 + fire_age3 + fire_age0 +
                       offset(log(n_days_effort)) +
-                      (1|cluster/location),
+                      (1|cluster),
                     data = all_variables)
 
-#running everything together just to see if it runs 
-mod_nb5 <- 
 
 fmList<-model.sel(mod_nb1=mod_nb1, mod_nb2=mod_nb2, mod_nb3=mod_nb3, mod_nb4=mod_nb4)
 fmList
-
-summary()
-
-
-
 
 #trying more simple model because some of the previous ones did not run
 #making null model

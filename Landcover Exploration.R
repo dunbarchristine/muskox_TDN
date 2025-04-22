@@ -51,7 +51,7 @@ plot(st_geometry(camera_locations),add = TRUE)
 
 #trying to make table with elevation for each camera location 
 
-# Extract elevation values for each camera location
+# Extract values for each camera location
 elevations <- raster::extract(dem_cropped, camera_locations)
 esker_camera_distances <- terra::extract(esker_dist, camera_locations)
 TRI_extracted <- raster::extract(TRI_results, camera_locations)
@@ -63,9 +63,15 @@ camera_locations_df <- st_as_sf(camera_locations) %>%
   st_drop_geometry()  # Remove geometry to get a regular data frame
 
 # Combine the extracted elevations with the camera location data
-camera_locations_df$elevations <- elevations
+camera_locations_df$elevations <- elevations$TDN_DEM
 camera_locations_df$esker_camera_distances <- esker_camera_distances$layer
 camera_locations_df$TRI_extracted <- TRI_extracted$lyr.1
+
+
+#adding tri to all_variables
+all_variables_with_tri <- all_variables %>%
+  left_join(camera_locations_df %>% select(location, TRI_extracted), by = "location")
+
 
 #combining distance to eskers column to comb_overlap_SCANFI_and_selected_mammals_week
 

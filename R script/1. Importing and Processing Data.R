@@ -145,7 +145,7 @@ SCANFI_landcover_cropped <- rast("spatial/SCANFI_landcover_cropped.tif")
 
 cropped_SCANFI_TDN_Boundary <- crop(SCANFI_landcover_cropped, TDN_boundary, mask = TRUE)
 
-fire_rast_cropped_TDN <- crop(fire_rast, TDN_boundary, mask = TRUE)
+#fire_rast_cropped_TDN <- crop(fire_rast, TDN_boundary, mask = TRUE)
 
 Camera_buffer_zones <- rasterize(vect(camera_buffer), SCANFI_landcover_cropped, field = "location") 
 
@@ -167,7 +167,7 @@ TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN
 #load data
 TDN_DEM<- terra::rast("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif")
 
-TDN_TRI <- raster("~/Desktop/Analysis/Learning/learning/spatial/TDN_TRI.aux.xml")
+#TDN_TRI <- raster("~/Desktop/Analysis/Learning/learning/spatial/TDN_TRI.aux.xml")
  
 #loading in nfdb shapefiles
 #nfdb <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
@@ -229,4 +229,6 @@ lcc_cameras_prop_columns <- lcc_cameras_prop_table %>%
 #creating new table with just numeric variables to run correlations
 lcc_cameras_prop_columns_variables_only <- lcc_cameras_prop_columns[, -1]
 
+#uploading csv file from claudia for monthly species detections
 
+monthly_species_detections <- read.csv("~/Desktop/Analysis/Learning/learning/712_month_detections.csv")

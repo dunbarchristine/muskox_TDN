@@ -13,6 +13,17 @@ overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras %>%
 #creating new table with just numeric variables to run correlations
 overlap_SCANFI_cameras_table_variables_only <- overlap_SCANFI_cameras_table[, -1]
 
+#adding seasons to selected_mammals_week data set
+
+# Adding a new column for seasons
+selected_mammals_week <- selected_mammals_week %>%
+  mutate(season = case_when(
+    week %in% 1:10 ~ "Winter",   # Weeks 1 to 10
+    week %in% 11:24 ~ "Spring",   # Weeks 11 to 24
+    week %in% 25:37 ~ "Summer",   # Weeks 25 to 37
+    week %in% 38:51 ~ "Fall",     # Weeks 36 to 45
+    week %in% 52:52 ~ "Winter",   # weeks 52 to 52
+    TRUE ~ "Unknown"))
 
 
 #adding the land cover names column to overlap_SCANFI_cameras_table
@@ -94,5 +105,31 @@ variables_only <- all_variables %>%
          grizzly_per_day, gray_wolf_per_day) %>%
   select(-matches("^location$"))
 
+#
+
+all_variables_season <- all_variables %>%
+  group_by(location, season, year, cluster) %>%
+  summarize(
+    Muskox = sum(Muskox),
+    grizzly_bear = sum(grizzly_bear),
+    gray_wolf = sum(gray_wolf),
+    n_days_effort = sum(n_days_effort),
+    `Treed broadleaf` = mean(`Treed broadleaf`),
+    `Treed conifer` = mean(`Treed conifer`),
+    `Treed mixed` = mean(`Treed mixed`),
+    Bryoid = mean(Bryoid),
+    Shrub = mean(Shrub),
+    Water = mean(Water),
+    Herbs = mean(Herbs),
+    fire_age0 = mean(fire_age0),
+    fire_age1 = mean(fire_age1),
+    fire_age2 = mean(fire_age2),
+    fire_age3 = mean(fire_age3),
+    fire_age4 = mean(fire_age4),
+    elevations = mean(elevations),
+    esker_camera_distances = mean(esker_camera_distances),
+    log_esker_camera_distances = mean(log_esker_camera_distances)
+  )
+  
 
 
