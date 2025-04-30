@@ -132,4 +132,37 @@ all_variables_season <- all_variables %>%
   )
   
 
+#adding tdn ecoregions to all_variables_with_tri_and_species
+model_variables <- merge(all_variables_with_tri_and_species, 
+                                            camera_locations_df[, c("location")], 
+                                            by = "location", 
+                                            all.x = TRUE) 
+
+
+locs_ecoregions <- camera_locations %>%
+  st_transform(crs = st_crs(cropped_ecoregions_TDN_Boundary)) #change the projection to match the raster
+
+# Find overlaps
+ecoregions_overlap <- st_join(locs_ecoregions, cropped_ecoregions_TDN_Boundary)
+ecoregions_overlap <- as.data.frame(ecoregions_overlap)
+
+# Make a new column in cameras (if needed)
+model_variables <- model_variables %>% 
+  left_join(ecoregions_overlap %>% select(location, ECO1_NAM_1, ECO2_NAM_1, ECO3_NAM_1, ECO4_NAM_1), by="location")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -175,6 +175,13 @@ TDN_DEM<- terra::rast("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/T
 #loading in nwt ecoregions
 nwt_ecoregions <- st_read("spatial/shapefiles/FMD_NWT_EcoRegions.shp")
 
+TDN_boundary <- st_transform(TDN_boundary, st_crs(nwt_ecoregions))
+
+cropped_ecoregions_TDN_Boundary <- st_intersection(nwt_ecoregions, TDN_boundary)
+
+tdn_ecoregions <- crop(nwt_ecoregions, TDN_boundary %>% st_transform(crs(nwt_ecoregions))) %>% 
+  project("EPSG:32612", method = "near") 
+
 #loading in nwt boundary 
 nwt_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/gpr_000a11a_e.shp")
 

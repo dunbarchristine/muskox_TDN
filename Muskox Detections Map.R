@@ -28,8 +28,7 @@ species_all <- read.csv("~/Desktop/Analysis/Learning/learning/raw data/NWTBM_Tha
 #QA/QC on data
 #how many sites are there?
 paste(length(unique(TDN_Cameras$location)))
-#how does it look?
-plot(TDN2)
+
 
 #plot boundary (geometry column from sf) and cameras
 plot(tdn_boundary$geometry)
@@ -119,12 +118,12 @@ grizzly_month_data_cameras <- merge(avg_grizzly_week_data, TDN_Cameras, by="loca
 
 #converting to sf objects
 month_data_cameras_SF <-st_as_sf(month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
-data_cameras_SF <- st_as_sf(data_cameras, coords=c("longitude.x", "latitude.x"), crs=4326, remove=FALSE)
+data_cameras_SF <- st_as_sf(data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 
-wolf_cameras_sf <-st_as_sf(wolf_cameras, coords=c("longitude.x", "latitude.x"), crs=4326, remove=FALSE)
+wolf_cameras_sf <-st_as_sf(wolf_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 wolf_month_data_cameras_sf <- st_as_sf(wolf_month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 
-grizzly_cameras_sf <-st_as_sf(grizzly_cameras, coords=c("longitude.x", "latitude.x"), crs=4326, remove=FALSE)
+grizzly_cameras_sf <-st_as_sf(grizzly_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 grizzly_month_data_cameras_sf <- st_as_sf(grizzly_month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 
 #Muskox count by month

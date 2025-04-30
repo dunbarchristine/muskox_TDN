@@ -26,6 +26,14 @@ all_variables <- all_variables %>%
   mutate(grizzly_per_day = grizzly_bear/n_days_effort, 
          gray_wolf_per_day = gray_wolf/n_days_effort)
 
+#made new dataset that included tri and grizz_per_day and gray_wolf_per_day
+all_variables_with_tri <- all_variables %>%
+  left_join(camera_locations_df %>% select(location, TRI_extracted), by = "location")
+
+all_variables_with_tri_and_species <- all_variables_with_tri %>%
+  mutate(grizzly_per_day = grizzly_bear/n_days_effort, 
+         gray_wolf_per_day = gray_wolf/n_days_effort)
+
 all_variables <- all_variables %>%
   rename_with(~ gsub(" ", "_", .))
 
@@ -36,24 +44,26 @@ all_variables <- all_variables %>%
 mod_nb1 <- glmer.nb(Muskox ~ 1+
                       offset(log(n_days_effort)) +
                       (1|cluster),
-                    data = all_variables_season)
+                    data = all_variables_with_tri_and_species)
 
-#predation model
-mod_nb2 <- glmer.nb(Muskox ~ grizzly_per_day + gray_wolf_per_day + 
+#predation model (not running)
+mod_nb2 <- glmmTMB(Muskox ~ grizzly_per_day + gray_wolf_per_day + 
                       offset(log(n_days_effort)) +
                       (1|cluster),
-                    data = all_variables_season)
+                    family="nbinom2",
+                    data = all_variables_with_tri_and_species)
+
 DHARMa::testZeroInflation(mod_nb2)
 DHARMa::testDispersion(mod_nb2)
 
 
 #food model
 #combining fire ages
-mod_3data <- all_variables %>%
+mod_3data <- all_variables_with_tri_and_species %>%
   mutate(fire_age2_3 = fire_age2 + fire_age3, 
          fire_age0_1 = fire_age0 + fire_age1)
 
-#fire model model for food hypothesis
+#fire model model for food hypothesis (running) 
 mod_nb3 <- glmer.nb(Muskox ~ scale(fire_age2_3) + scale(fire_age0_1) +
                       offset(log(n_days_effort)) +
                       (1|cluster), #grouping by five cameras 
@@ -61,21 +71,45 @@ mod_nb3 <- glmer.nb(Muskox ~ scale(fire_age2_3) + scale(fire_age0_1) +
 ss <- getME(mod_nb3,c("theta","fixef"))
 m2 <- update(mod_nb3,start=ss,control=glmerControl(optCtrl=list(maxfun=2e4)))
 
-#landcover model for food hypothesis
-mod_nb3.1 <- glmer.nb(Muskox ~ scale(Shrub) + scale(`Treed broadleaf`) +
+#landcover model for food hypothesis (not running with shrub and treed broadleaf, but is running with just shrub, something is wrong with broadleaf)
+mod_nb3.1 <- glmmTMB(Muskox ~ scale(Shrub) + scale(Treed_broadleaf) + #ran this without broadleaf and instead used conifer, and it worked. broadleaf not working.
                       offset(log(n_days_effort)) +
                       (1|cluster),
-                    data = all_variables)
+                     family="nbinom2",
+                    data = all_variables_with_tri_and_species) 
+ss <- getME(mod_nb3.1,c("theta","fixef"))
+m2 <- update(mod_nb3.1,start=ss,control=glmerControl(optCtrl=list(maxfun=2e4)))
 
-#thermoregulation model
-mod_nb4 <- glmer.nb(Muskox ~ `Treed conifer` + `Treed broadleaf` + `Treed mixed` + elevations + log_esker_camera_distances + fire_age1 + fire_age2 + fire_age3 + fire_age0 +
+
+
+#thermoregulation model (not running)
+
+#combining fire ages
+mod_4data <- all_variables_with_tri_and_species %>%
+  mutate(fire_age2_3 = fire_age2 + fire_age3, 
+         fire_age0_1 = fire_age0 + fire_age1)
+
+mod_nb4 <- glmmTMB(Muskox ~ Treed_mixed + elevations + log_esker_camera_distances + fire_age2_3 + fire_age0_1 + TRI_extracted +
                       offset(log(n_days_effort)) +
                       (1|cluster),
-                    data = all_variables)
+                   family="nbinom2",
+                    data = mod_4data)
 
 
 fmList<-model.sel(mod_nb1=mod_nb1, mod_nb2=mod_nb2, mod_nb3=mod_nb3, mod_nb4=mod_nb4)
 fmList
+
+
+
+
+
+
+
+
+
+
+
+
 
 #trying more simple model because some of the previous ones did not run
 #making null model
@@ -85,10 +119,10 @@ mod_1 <- glmer(Muskox ~ 1+
                     data = all_variables)
 
 #predation model
-mod_2 <- glmer(Muskox ~ grizzly_per_day + gray_wolf_per_day + Treed_conifer + Treed_broadleaf + treed_mixed + elevations + log_esker_camera_distances +
+mod_2 <- glmer(Muskox ~ grizzly_per_day + gray_wolf_per_day + Treed_conifer + Treed_broadleaf + treed_mixed + elevations + log_esker_camera_distances + TRI_extracted +
                       offset(log(n_days_effort)) +
                       (1|cluster/location),
-                    data = all_variables)
+                    data = all_variables_with_tri)
 
 #food model
 mod_3 <- glmer(Muskox ~ Bryoid + Shrub + Herbs + Treed_broadleaf + fire_age0 + fire_age1 + fire_age2 + fire_age3 + fire_age4 +

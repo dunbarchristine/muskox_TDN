@@ -68,7 +68,7 @@ camera_locations_df$esker_camera_distances <- esker_camera_distances$layer
 camera_locations_df$TRI_extracted <- TRI_extracted$lyr.1
 
 
-#adding tri to all_variables
+#adding terrain ruggedness index (TRI) to all_variables
 all_variables_with_tri <- all_variables %>%
   left_join(camera_locations_df %>% select(location, TRI_extracted), by = "location")
 
@@ -144,4 +144,35 @@ ggplot() +
     panel.grid.minor = element_blank()
   ) +
   labs(title = "TDN Landcover Types", color = "Habitat")
+
+
+#making map of all nwt ecoregions
+nwt_ecoregions_2 <- nwt_ecoregions %>%
+  group_by(ECO2_NAM_1) %>% 
+  summarize(geometry = st_union(geometry)) 
+
+
+#making mao for just tdn ecoregions
+tdn_ecoregions_2 <- cropped_ecoregions_TDN_Boundary %>%
+  group_by(ECO2_NAM_1) %>% 
+  summarize(geometry = st_union(geometry)) 
+
+
+#plotting map of tdn ecoregions
+ggplot(data = tdn_ecoregions_2) +
+  geom_sf(aes(fill = ECO2_NAM_1), color = "black", size = 0.2) +
+  scale_fill_manual(
+    name = "TDN Ecoregions",
+    values = c("darkseagreen", "burlywood")
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+
+
+
     
