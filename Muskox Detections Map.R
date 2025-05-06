@@ -203,10 +203,6 @@ TDN_Habitat_locations_SF <- st_as_sf(TDN_Habitat_Locations, coords=c("longitude"
 water_shapefile <- "~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_water_features.shp"
 water_polygon <- st_read(water_shapefile)
 
-#check the shapefile contents 
-print(water_shapefile)
-summary(water_shapefile)
-
 #reading in treeline shapefile
 shapefile_path2 <- "~/Desktop/Analysis/Learning/learning/spatial/shapefiles/Treeline_Approx.shp"
 treeline_polygon <- st_read(shapefile_path2)

@@ -812,8 +812,52 @@ grizz_max_habitat <- grizz_habitat_summary %>%
   filter(grizz_per_day == max(grizz_per_day)) %>%
   ungroup()
 
+#creating histogram to show annual muskox activity to help define seasons
+
+#adding zeros to the week column 
+all_variables <- all_variables %>%
+  mutate(week = str_pad(week, width = 2, side = "left", pad = "0"))
+
+#second, combining columns 
+all_variables <- all_variables %>%
+  mutate(year_week = paste(year, week, sep = "_"))
+
+#creating new dataset with just muskox and year_week
+muskox_year_week <- all_variables %>%
+  dplyr::select(Muskox, year_week)
 
 
+# Create the histogram plot
+ggplot(muskox_year_week, aes(x = year_week, y = count, fill = Muskox)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Counts of Muskox Per Week",
+       x = "Week",
+       y = "Weekly Muskox Detections Per Total Trigger") +
+  facet_wrap(~species, nrow  = 2) +
+  theme_minimal() +
+  scale_fill_manual(values = c("Muskox" = "cornflowerblue", 
+                               )) +
+  theme(legend.title = element_blank()) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+#Summarize counts of Muskox detections per week
+muskox_counts <- muskox_year_week %>%
+  group_by(year_week) %>%
+  summarize(count = sum(Muskox, na.rm = TRUE)) %>%
+  ungroup()
+
+#removing dates after 2022_40
+muskox_counts <- muskox_counts %>%
+  filter(year_week >= "2021_29", year_week < "2022_41")
+
+#plot it
+ggplot(muskox_counts, aes(x = year_week, y = count)) +
+  geom_bar(stat = "identity", fill = "cornflowerblue") +
+  labs(title = "Counts of Muskox Per Week",
+       x = "Week",
+       y = "Weekly Muskox Detections") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 
 

@@ -41,17 +41,17 @@ all_variables <- all_variables %>%
 #using a negative binomal mixed effects model with camera cluster and camera ID as fixed effects
 
 #making null model
-mod_nb1 <- glmer.nb(Muskox ~ 1+
+mod_nb1 <- glmmTMB(Muskox ~ 1+
                       offset(log(n_days_effort)) +
                       (1|cluster),
-                    data = all_variables_with_tri_and_species)
+                    data = model_variables_only)
 
-#predation model (not running)
+#predation model 
 mod_nb2 <- glmmTMB(Muskox ~ grizzly_per_day + gray_wolf_per_day + 
                       offset(log(n_days_effort)) +
                       (1|cluster),
                     family="nbinom2",
-                    data = all_variables_with_tri_and_species)
+                    data = model_variables_only)
 
 DHARMa::testZeroInflation(mod_nb2)
 DHARMa::testDispersion(mod_nb2)
@@ -59,7 +59,7 @@ DHARMa::testDispersion(mod_nb2)
 
 #food model
 #combining fire ages
-mod_3data <- all_variables_with_tri_and_species %>%
+mod_3data <- model_variables_only %>%
   mutate(fire_age2_3 = fire_age2 + fire_age3, 
          fire_age0_1 = fire_age0 + fire_age1)
 
@@ -72,24 +72,24 @@ ss <- getME(mod_nb3,c("theta","fixef"))
 m2 <- update(mod_nb3,start=ss,control=glmerControl(optCtrl=list(maxfun=2e4)))
 
 #landcover model for food hypothesis (not running with shrub and treed broadleaf, but is running with just shrub, something is wrong with broadleaf)
-mod_nb3.1 <- glmmTMB(Muskox ~ scale(Shrub) + scale(Treed_broadleaf) + #ran this without broadleaf and instead used conifer, and it worked. broadleaf not working.
+mod_nb3.1 <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed broadleaf`) + #ran this without broadleaf and instead used conifer, and it worked. broadleaf not working.
                       offset(log(n_days_effort)) +
                       (1|cluster),
                      family="nbinom2",
-                    data = all_variables_with_tri_and_species) 
+                    data = model_variables_only) 
 ss <- getME(mod_nb3.1,c("theta","fixef"))
 m2 <- update(mod_nb3.1,start=ss,control=glmerControl(optCtrl=list(maxfun=2e4)))
 
 
 
-#thermoregulation model (not running)
+#thermoregulation model
 
 #combining fire ages
-mod_4data <- all_variables_with_tri_and_species %>%
+mod_4data <- model_variables_only %>%
   mutate(fire_age2_3 = fire_age2 + fire_age3, 
          fire_age0_1 = fire_age0 + fire_age1)
 
-mod_nb4 <- glmmTMB(Muskox ~ Treed_mixed + elevations + log_esker_camera_distances + fire_age2_3 + fire_age0_1 + TRI_extracted +
+mod_nb4 <- glmmTMB(Muskox ~ `Treed mixed` + Elevation + log_esker_camera_distances + fire_age2_3 + fire_age0_1 + TRI_extracted +
                       offset(log(n_days_effort)) +
                       (1|cluster),
                    family="nbinom2",

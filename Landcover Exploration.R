@@ -67,19 +67,18 @@ camera_locations_df$elevations <- elevations$TDN_DEM
 camera_locations_df$esker_camera_distances <- esker_camera_distances$layer
 camera_locations_df$TRI_extracted <- TRI_extracted$lyr.1
 
+# Merge the datasets based on 'camera_id'
+adding_variables_elevations_eskers <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
+                                            camera_locations_df[, c("location", "elevations", "esker_camera_distances")], 
+                                            by = "location", 
+                                            all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
 
 #adding terrain ruggedness index (TRI) to all_variables
 all_variables_with_tri <- all_variables %>%
   left_join(camera_locations_df %>% select(location, TRI_extracted), by = "location")
 
 
-#combining distance to eskers column to comb_overlap_SCANFI_and_selected_mammals_week
 
-# Merge the datasets based on 'camera_id'
-adding_variables_elevations_eskers <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
-                                                       camera_locations_df[, c("location", "elevations", "esker_camera_distances")], 
-                                                       by = "location", 
-                                                       all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
 
 # # Remove specific columns and rename 'elevations.y' to 'elevation'
 # adding_variables_elevations_eskers <- adding_variables_elevations_eskers %>%
