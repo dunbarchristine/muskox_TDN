@@ -63,7 +63,7 @@ mod_3data <- model_variables_only %>%
   mutate(fire_age2_3 = fire_age2 + fire_age3, 
          fire_age0_1 = fire_age0 + fire_age1)
 
-#fire model model for food hypothesis (running) 
+#fire model model for food hypothesis 
 mod_nb3 <- glmer.nb(Muskox ~ scale(fire_age2_3) + scale(fire_age0_1) +
                       offset(log(n_days_effort)) +
                       (1|cluster), #grouping by five cameras 
@@ -96,8 +96,8 @@ mod_nb4 <- glmmTMB(Muskox ~ `Treed mixed` + Elevation + log_esker_camera_distanc
                     data = mod_4data)
 
 
-fmList<-model.sel(mod_nb1=mod_nb1, mod_nb2=mod_nb2, mod_nb3=mod_nb3, mod_nb4=mod_nb4)
-fmList
+# fmList<-model.sel(mod_nb1=mod_nb1, mod_nb2=mod_nb2, mod_nb3=mod_nb3, mod_nb4=mod_nb4)
+# fmList
 
 
 
