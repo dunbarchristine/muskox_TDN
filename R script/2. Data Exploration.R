@@ -628,17 +628,33 @@ write_xlsx(selected_mammals_week, "selected_mammals_week.xlsx")
 
 getwd()
 
+#old fire code that I am not using but do not want to delete just yet
+#combining fire ages
+mod_3data <- model_variables_only %>%
+  mutate(fire_age2_3 = fire_age2 + fire_age3, 
+         fire_age0_1 = fire_age0 + fire_age1)
+
+#fire model for food hypothesis 
+mod_nb3 <- glmer.nb(Muskox ~ scale(fire_age2_3) + scale(fire_age0_1) +
+                      offset(log(n_days_effort)) +
+                      (1|cluster), #grouping by five cameras 
+                    data = mod_3data)
+# ss <- getME(mod_nb3,c("theta","fixef"))
+# m2 <- update(mod_nb3,start=ss,control=glmerControl(optCtrl=list(maxfun=2e4)))
 
 
+# ss <- getME(mod_nb3.1,c("theta","fixef"))
+# m2 <- update(mod_nb3.1,start=ss,control=glmerControl(optCtrl=list(maxfun=2e4)))
 
 
+#combining fire ages
+# mod_4data <- model_variables_only %>%
+#   mutate(fire_age2_3 = fire_age2 + fire_age3, 
+#          fire_age0_1 = fire_age0 + fire_age1)
 
 
-
-
-
-
-
+# fmList<-model.sel(mod_nb1=mod_nb1, mod_nb2=mod_nb2, mod_nb3=mod_nb3, mod_nb4=mod_nb4)
+# fmList
 
   
 

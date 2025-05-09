@@ -43,61 +43,65 @@ all_variables <- all_variables %>%
 #making null model
 mod_nb1 <- glmmTMB(Muskox ~ 1+
                       offset(log(n_days_effort)) +
-                      (1|cluster),
-                    data = model_variables_only)
+                      (1|cluster/location),
+                    data = model_variables)
 
 #predation model 
-mod_nb2 <- glmmTMB(Muskox ~ grizzly_per_day + gray_wolf_per_day + 
+#summer model for predation
+mod_pre_sum <- glmmTMB(Muskox ~ grizzly_bear + gray_wolf + 
                       offset(log(n_days_effort)) +
-                      (1|cluster),
+                      (1|cluster/location),
                     family="nbinom2",
-                    data = model_variables_only)
+                    data = model_variables %>% filter(season == "Summer"))
 
-DHARMa::testZeroInflation(mod_nb2)
-DHARMa::testDispersion(mod_nb2)
+
+#winter model for predation 
+mod_pre_win <- glmmTMB(Muskox ~ grizzly_bear + gray_wolf + 
+                     offset(log(n_days_effort)) +
+                     (1|cluster/location),
+                   family="nbinom2",
+                   data = model_variables %>% filter(season == "Winter"))
 
 
 #food model
-#combining fire ages
-mod_3data <- model_variables_only %>%
-  mutate(fire_age2_3 = fire_age2 + fire_age3, 
-         fire_age0_1 = fire_age0 + fire_age1)
-
-#fire model model for food hypothesis 
-mod_nb3 <- glmer.nb(Muskox ~ scale(fire_age2_3) + scale(fire_age0_1) +
+#summer model for landcover (food hypothesis)
+mod_food_sum <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed broadleaf`) + scale(Bryoid) + scale(Herbs) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) +
                       offset(log(n_days_effort)) +
-                      (1|cluster), #grouping by five cameras 
-                    data = mod_3data)
-ss <- getME(mod_nb3,c("theta","fixef"))
-m2 <- update(mod_nb3,start=ss,control=glmerControl(optCtrl=list(maxfun=2e4)))
-
-#landcover model for food hypothesis (not running with shrub and treed broadleaf, but is running with just shrub, something is wrong with broadleaf)
-mod_nb3.1 <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed broadleaf`) + #ran this without broadleaf and instead used conifer, and it worked. broadleaf not working.
-                      offset(log(n_days_effort)) +
-                      (1|cluster),
+                      (1|cluster/location),
                      family="nbinom2",
-                    data = model_variables_only) 
-ss <- getME(mod_nb3.1,c("theta","fixef"))
-m2 <- update(mod_nb3.1,start=ss,control=glmerControl(optCtrl=list(maxfun=2e4)))
+                    data = model_variables %>% filter(season == "Summer")) 
 
+
+#winter model for landcover (food hypothesis)
+mod_food_win <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed broadleaf`) + scale(Herbs) + scale(Bryoid) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) +
+                       offset(log(n_days_effort)) +
+                       (1|cluster/location),
+                     family="nbinom2",
+                     data = model_variables %>% filter(season == "Winter")) 
 
 
 #thermoregulation model
-
-#combining fire ages
-mod_4data <- model_variables_only %>%
-  mutate(fire_age2_3 = fire_age2 + fire_age3, 
-         fire_age0_1 = fire_age0 + fire_age1)
-
-mod_nb4 <- glmmTMB(Muskox ~ `Treed mixed` + Elevation + log_esker_camera_distances + fire_age2_3 + fire_age0_1 + TRI_extracted +
+#summer model for thermoregulation 
+mod_therm_summer <- glmmTMB(Muskox ~ `Treed mixed`+`Treed broadleaf`+`Treed conifer`+ Water + log_esker_camera_distances + fire_age1 + fire_age2 + fire_age3 + fire_age0 + TRI_extracted +
                       offset(log(n_days_effort)) +
-                      (1|cluster),
+                      (1|cluster/location),
                    family="nbinom2",
-                    data = mod_4data)
+                    data = model_variables  %>% filter(season == "Summer"))
 
+#winter model for thermoregulation 
+mod_therm_win <- glmmTMB(Muskox ~ `Treed mixed`+`Treed broadleaf`+`Treed conifer`+ Water + log_esker_camera_distances + fire_age1 + fire_age2 + fire_age3 + fire_age0 + TRI_extracted +
+                     offset(log(n_days_effort)) +
+                     (1|cluster/location),
+                   family="nbinom2",
+                   data = model_variables %>% filter(season == "Winter"))
 
-# fmList<-model.sel(mod_nb1=mod_nb1, mod_nb2=mod_nb2, mod_nb3=mod_nb3, mod_nb4=mod_nb4)
-# fmList
+#model with all variables
+model_all <- glmmTMB(Muskox ~ `Treed mixed` + log_esker_camera_distances + fire_age1 + fire_age2 + fire_age3 + fire_age0 + TRI_extracted + Shrub + Bryoid + Herbs + `Treed broadleaf` + `Treed conifer` + gray_wolf + grizzly_bear + season + Water +   
+                offset(log(n_days_effort)) +
+                (1|cluster/location),
+                family="nbinom2",
+                data = model_variables)
+
 
 
 
@@ -249,7 +253,7 @@ mod_nb <- glmer.nb(Muskox ~ grizzly_per_day +
 
 
 
-
+glmmTMB::fixef()
 
 
   
