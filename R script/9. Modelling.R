@@ -89,34 +89,10 @@ summary(mod_therm_sum_4)
 fmListWin<-model.sel(mod_null_win_1=mod_null_win_1, mod_pred_win_2=mod_pred_win_2, mod_food_win_3=mod_food_win_3, mod_therm_win_4=mod_therm_win_4, model_global_win_5=model_global_win_5)
 fmListWin
 
-m <- dredge(model_global_sum_5, fixed = ~offset(log(n_days_effort)) + (1|/cluster/location))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+data_summer <- model_variables %>% filter(season == "Summer") %>% drop_na()
+  model_global_win_5 <- glmmTMB(Muskox ~ scale(`Treed mixed`) + scale(Shrub) + scale(Herbs) +   
+                                offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = data_summer, na.action = "na.fail")
+m <- dredge(model_global_win_5, fixed = ~offset(log(n_days_effort)) + (1|cluster))
 
 
 
