@@ -4,18 +4,18 @@ library(sf)
 library(terra)
 
 #downloads a shapefile and converts into R object
-map<- read.csv('NWTBM_muskox_month_data.csv')
-tdn_boundary <- st_read("TDN_Boundary.shp")
+map<- read.csv('~/Desktop/Analysis/Learning/learning/raw data/NWTBM_muskox_month_data.csv')
+tdn_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_Boundary.shp")
 
 #make sure it looks right
 plot(tdn_boundary)
 
 #load camera sites, drop the NA sites, convert to spatial file
-TDN_Cameras<-read_csv("NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv")
+TDN_Cameras<-read_csv("~/Desktop/Analysis/Learning/learning/raw data/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv")
 TDN2 <-TDN_Cameras %>% 
   filter(!is.na(latitude)) %>% 
   st_as_sf(coords=c("longitude", "latitude"), crs=4326, remove=FALSE) %>% 
-  st_transform(st_crs(tdn_boundary))
+  st_transform(st_crs(TDN_boundary))
 
 #TDN_Cameras2 <- st_as_sf(TDN_Cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 
@@ -23,13 +23,12 @@ object_class <- class(TDN2)
 print(object_class) 
 
 #load species data
-species_all <- read.csv("NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_tag_report.csv")
+species_all <- read.csv("~/Desktop/Analysis/Learning/learning/raw data/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_tag_report.csv")
 
 #QA/QC on data
 #how many sites are there?
 paste(length(unique(TDN_Cameras$location)))
-#how does it look?
-plot(TDN2)
+
 
 #plot boundary (geometry column from sf) and cameras
 plot(tdn_boundary$geometry)
@@ -43,14 +42,14 @@ TDN2$site <- substr(TDN2$location, 1, 11)
 paste(length(unique(TDN2$site)))
 
 #loading station habitat csv file
-TDN_Habitat<-read_csv("TDN_habitat_site.csv")
+TDN_Habitat<-read_csv("~/Desktop/Analysis/Learning/learning/raw data/TDN_habitat_site.csv")
 
 #merge habitat file into camera file
 TDN_Cameras_Habitat <- merge (TDN2, TDN_Habitat, by="site")
 
 #plot boundary with cameras coloured by habitat
 ggplot() +
-  geom_sf(data = tdn_boundary$geometry) +
+  geom_sf(data = TDN_boundary$geometry) +
   geom_sf(data = TDN_Cameras_Habitat$geometry, aes(color = TDN_Cameras_Habitat$habitat), size = 3) +
   theme_minimal() +
   theme(
@@ -72,8 +71,36 @@ data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
          year = year(date),
          individual_count = as.numeric(individual_count))
 
+wolf_data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
+  filter(species_common_name == "Gray Wolf") %>% #if I want to filter by a species
+  mutate(week = week(date), #if I want to create a column with week number
+         month = month(date),
+         year = year(date),
+         individual_count = as.numeric(individual_count))
+
+grizzly_data <- species_all %>% mutate(year_month = floor_date(date, "month"))  %>%
+  filter(species_common_name == "Grizzly Bear") %>% #if I want to filter by a species
+  mutate(week = week(date), #if I want to create a column with week number
+         month = month(date),
+         year = year(date),
+         individual_count = as.numeric(individual_count))
+
 #averaging muskox detections by week
 month_data <- data %>% 
+  group_by(date, month, location) %>%
+  summarise(date_count = max(individual_count)) %>%
+  group_by(month, location) %>%
+  summarise(month_count = mean(date_count) * 7)
+
+#averaging wolf detections by week
+avg_wolf_week_data <- wolf_data %>% 
+  group_by(date, month, location) %>%
+  summarise(date_count = max(individual_count)) %>%
+  group_by(month, location) %>%
+  summarise(month_count = mean(date_count) * 7)
+
+#averaging wolf detections by week
+avg_grizzly_week_data <- grizzly_data %>% 
   group_by(date, month, location) %>%
   summarise(date_count = max(individual_count)) %>%
   group_by(month, location) %>%
@@ -83,13 +110,25 @@ month_data <- data %>%
 data_cameras <- merge(data, TDN_Cameras, by="location")
 month_data_cameras <- merge(month_data, TDN_Cameras, by="location")
 
+wolf_cameras <- merge(wolf_data, TDN_Cameras, by="location")
+wolf_month_data_cameras <- merge(avg_wolf_week_data, TDN_Cameras, by="location")
+
+grizzly_cameras <- merge(grizzly_data, TDN_Cameras, by="location")
+grizzly_month_data_cameras <- merge(avg_grizzly_week_data, TDN_Cameras, by="location")
+
 #converting to sf objects
 month_data_cameras_SF <-st_as_sf(month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 data_cameras_SF <- st_as_sf(data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
 
+wolf_cameras_sf <-st_as_sf(wolf_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
+wolf_month_data_cameras_sf <- st_as_sf(wolf_month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
+
+grizzly_cameras_sf <-st_as_sf(grizzly_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
+grizzly_month_data_cameras_sf <- st_as_sf(grizzly_month_data_cameras, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
+
 #Muskox count by month
 ggplot() +
-  geom_sf(data=tdn_boundary) +
+  geom_sf(data=TDN_boundary) +
   geom_sf(data=month_data_cameras_SF, aes(geometry = geometry, size=month_count)) +
   facet_wrap(~month, nrow = 4) +
   theme_minimal() +
@@ -100,10 +139,38 @@ ggplot() +
     panel.grid.minor = element_blank())
 
 
+#wolf count by month
+ggplot() +
+  geom_sf(data=TDN_boundary) +
+  tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+  geom_sf(data=wolf_month_data_cameras_sf, aes(geometry = geometry, size=month_count)) +
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+#grizzly count by month
+ggplot() +
+  geom_sf(data=TDN_boundary) +
+  tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+  geom_sf(data=grizzly_month_data_cameras_sf, aes(geometry = geometry, size=month_count)) +
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+
+
+
 #muskox count by month with habitat layer
 
 ggplot() +
-  geom_sf(data=tdn_boundary) +
+  geom_sf(data=TDN_boundary) +
   geom_sf(data=month_data_cameras_SF, aes(geometry = geometry, size=month_count)) +
   geom_sf(data = TDN_Cameras_Habitat$geometry, color = TDN_Cameras_Habitat$habitat, size = 3) +
   facet_wrap(~month, nrow = 4) +
@@ -114,6 +181,17 @@ ggplot() +
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank())
 
+ggplot() +
+  geom_sf(data = TDN_boundary) +
+  geom_sf(data = month_data_cameras_SF, aes(geometry = geometry, size = month_count)) +
+  geom_sf(data = TDN_Cameras_Habitat, aes(geometry = geometry, color = habitat), size = 1) +  # Apply 'color' directly within aes()
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
 
 
 #convert TDN habitat to an SF object so we can plot it 
@@ -122,15 +200,11 @@ TDN_Habitat_Locations <- merge (TDN2, TDN_Habitat, by="site") #merging habitat a
 TDN_Habitat_locations_SF <- st_as_sf(TDN_Habitat_Locations, coords=c("longitude", "latitude"), crs=4326, remove=FALSE) #now that its merged, turning it into an SF object
 
 #reading in water shapefile
-water_shapefile <- "~/Desktop/Analysis/Learning/learning/TDN_water_features.shp"
+water_shapefile <- "~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_water_features.shp"
 water_polygon <- st_read(water_shapefile)
 
-#check the shapefile contents 
-print(water_shapefile)
-summary(water_shapefile)
-
 #reading in treeline shapefile
-shapefile_path2 <- "~/Desktop/Analysis/Learning/learning/Treeline_Approx.shp"
+shapefile_path2 <- "~/Desktop/Analysis/Learning/learning/spatial/shapefiles/Treeline_Approx.shp"
 treeline_polygon <- st_read(shapefile_path2)
 
 Habitat_types <- st_as_sf(TDN_Habitat_locations_SF, coords=c("longitude", "latitude"), crs=4326, remove=FALSE)
@@ -166,6 +240,22 @@ ggplot(data=data_cameras_SF) +
     panel.grid.minor = element_blank()) 
 
 
+
+ggplot(data = data_cameras_SF) +
+  geom_sf(data = tdn_boundary) +
+  geom_sf(data = water_polygon, fill = 'light blue') +
+  geom_sf(data = treeline_polygon, color = 'red') +
+  geom_sf(aes(size = individual_count, colour = habitat)) +
+  # Assuming SCFI_landcover_cropped is a column in data_cameras_SF
+  geom_sf(aes(fill = SCANFI_landcover_cropped)) +
+  scale_fill_manual(values = coltab$cover) +  # Apply custom colors using coltab
+  facet_wrap(~month, nrow = 4) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.minor = element_blank())
+
 #this package has the github function
 install.packages("devtools")
 
@@ -199,13 +289,11 @@ summarised_month <- wt_summarise_cam(
   variable = "detections",
   # Your desired output format (wide or long)
   output_format = "wide",
-  start_col_det = "start_date")
+  start_col_det = "start_time")
 
-summarised_month <- species_ind_data
-  
+
   colnames(species_ind_det)
   head(species_ind_det)
-
   summarised_week <- species_ind_data
   
 #Summarising the independent detections by week

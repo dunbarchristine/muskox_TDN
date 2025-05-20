@@ -44,7 +44,7 @@ setwd("~/Desktop/Analysis/Learning/learning/spatial")
 
 
 #load species data
-species_all <- read.csv("SpeciesRawData (Oct 31)/SPECIES_ALL_LIST.csv")
+species_all <- read.csv("~/Desktop/Analysis/Learning/learning/Raw Data/Species Raw Data (May 2025)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_main_report.csv")
 
 #create independent detections
 species_ind_data <- wt_ind_detect(
@@ -56,7 +56,6 @@ species_ind_data <- wt_ind_detect(
   remove_domestic = TRUE)
 
 #Summarising the independent detections by month
-
 summarised_month <- wt_summarise_cam(
   # Supply your detection data
   detect_data = species_ind_data,
@@ -91,10 +90,9 @@ summarised_week <- wt_summarise_cam(
 
 
 ##pulling out the camera ID, week, n effort, griz and gray wolf and muskox 
-
 # Select the first and second columns
 selected_mammals_week <- summarised_week %>%
-  dplyr::select(2,3,4,5,14,28,31,41)
+  dplyr::select(2,3,4,5,14,27,30,40)
 
 
 # Extract last 2 characters from the 'location' column because it is the camera site and create a new column 'camera'
@@ -118,7 +116,7 @@ TDN_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles
 
 tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/SPECIES_ALL_LIST.csv")
 
-camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
+camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/Raw Data/SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
   drop_na("longitude") %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
   st_transform(32612) #this number corresponds to the epsg code for utm code 12
@@ -126,7 +124,7 @@ camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/SpeciesRawDat
 #creating 300 m buffers for cameras
 camera_buffer <- st_buffer(camera_locations, 300)
 
-SCANFI_landcover <- rast("~/Desktop/Analysis/Learning/learning/raw data/SCANFI_att_nfiLandCover_SW_2020_v1.2.tif")
+SCANFI_landcover <- rast("~/Desktop/Analysis/Learning/learning/Raw Data/SCANFI_att_nfiLandCover_SW_2020_v1.2.tif")
 
 SCANFI_landcover_cropped <- crop(SCANFI_landcover, TDN_boundary %>% st_transform(crs(SCANFI_landcover))) %>% 
   project("EPSG:32612", method = "near") #SCANFI_landcover_cropped is the scanfi data with the camera buffers
@@ -160,20 +158,18 @@ overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras %>%
 
 esker_data <- st_read("spatial/shapefiles/Linear_Surficial_Features_of_Canada_(Canadian_Geoscience_Map_195).shp")
 
-#loading in DEM data from erics google drive folder
+#loading in DEM (elevation) data from erics google drive folder
 
-TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif") #not sure if this worked
+TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif") 
 
 #load data
 TDN_DEM<- terra::rast("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif")
 
-#TDN_TRI <- raster("~/Desktop/Analysis/Learning/learning/spatial/TDN_TRI.aux.xml")
- 
-#loading in nfdb shapefiles
-#nfdb <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
+#trying a different DEM dataset because the TDN_DEM has NAs in it
+ArcticDEM <- terra::rast("~/Desktop/Analysis/Learning/learning/Spatial/shapefiles/arctic_DEM_10m_TDN.tif")
 
 #loading in nwt ecoregions
-nwt_ecoregions <- st_read("spatial/shapefiles/FMD_NWT_EcoRegions.shp")
+nwt_ecoregions <- st_read("~/Desktop/Analysis/Learning/learning/Spatial/shapefiles/FMD_NWT_EcoRegions.shp")
 
 TDN_boundary <- st_transform(TDN_boundary, st_crs(nwt_ecoregions))
 
@@ -185,7 +181,7 @@ tdn_ecoregions <- crop(nwt_ecoregions, TDN_boundary %>% st_transform(crs(nwt_eco
 #loading in nwt boundary 
 nwt_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/gpr_000a11a_e.shp")
 
-NBAC <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/nbac_1972_2023_20240530_shp/nbac_1972_2023_20240530.shp")
+NBAC <- st_read("~/Desktop/Analysis/Learning/learning/Spatial/shapefiles/NBAC/NBAC_1972_2024_20250506.shp")
 
 #reading in national fire database fire polygon data 
 #National_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly_large_fires 2/NFDB_poly_20210707_large_fires.shp")
