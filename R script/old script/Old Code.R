@@ -657,21 +657,136 @@ mod_nb3 <- glmer.nb(Muskox ~ scale(fire_age2_3) + scale(fire_age0_1) +
 # fmList
 
   
+# # Now perform the left join
+# comb_overlap_SCANFI_and_selected_mammals_week <- comb_overlap_SCANFI_and_selected_mammals_week %>%
+#   dplyr::left_join(camera_locations_df %>% dplyr::select(location, distance_to_esker), 
+#                    by = "location")
 
+# # Remove the 'm' and convert to numeric
+# comb_overlap_SCANFI_and_selected_mammals_week$distance_to_esker <- 
+#   as.numeric(gsub("m", "", comb_overlap_SCANFI_and_selected_mammals_week$distance_to_esker))
+# 
+# # Rename the column to include 'm'
+# colnames(comb_overlap_SCANFI_and_selected_mammals_week)[
+#   which(names(comb_overlap_SCANFI_and_selected_mammals_week) == "distance_to_esker")] <- "distance_to_esker_m"
 
+#moving the column "cluster" to the dataset combined_variables_fire
 
+#ecoregions 
+locs_ecoregions <- camera_locations %>%
+  st_transform(crs = st_crs(cropped_ecoregions_TDN_Boundary)) #change the projection to match the raster
 
+# Find overlaps
+ecoregions_overlap <- st_join(locs_ecoregions, cropped_ecoregions_TDN_Boundary)
+ecoregions_overlap <- as.data.frame(ecoregions_overlap)
 
+# Make a new column in cameras 
+model_variables <- model_variables %>% 
+  left_join(ecoregions_overlap %>% select(location, ECO1_NAM_1, ECO2_NAM_1, ECO3_NAM_1, ECO4_NAM_1), by="location")
 
- 
+variables_only <- all_variables %>%
+  ungroup() %>%  # Ungroup the dataset to prevent warnings
+  select(`Treed_broadleaf`, `Treed_conifer`, `Treed_mixed`, Bryoid, Shrub, Water, Herbs,
+         gray_wolf, grizzly_bear, elevations, esker_camera_distances,
+         fire_age0, fire_age1, fire_age2, fire_age3, fire_age4, log_esker_camera_distances,
+         grizzly_per_day, gray_wolf_per_day) %>%
+  select(-matches("^location$"))
+
+#all variables with seasons
+
+all_variables_season <- all_variables %>%
+  group_by(location, season, year, cluster) %>%
+  summarize(
+    Muskox = sum(Muskox),
+    grizzly_bear = sum(grizzly_bear),
+    gray_wolf = sum(gray_wolf),
+    n_days_effort = sum(n_days_effort),
+    `Treed broadleaf` = mean(`Treed broadleaf`),
+    `Treed conifer` = mean(`Treed conifer`),
+    `Treed mixed` = mean(`Treed mixed`),
+    Bryoid = mean(Bryoid),
+    Shrub = mean(Shrub),
+    Water = mean(Water),
+    Herbs = mean(Herbs),
+    fire_age0 = mean(fire_age0),
+    fire_age1 = mean(fire_age1),
+    fire_age2 = mean(fire_age2),
+    fire_age3 = mean(fire_age3),
+    fire_age4 = mean(fire_age4),
+    elevations = mean(elevations),
+    esker_camera_distances = mean(esker_camera_distances),
+    log_esker_camera_distances = mean(log_esker_camera_distances)
+  )
+
+# Assuming both datasets have a common key for joining (e.g., an ID column like "id")
+combined_variables_and_fire <- combined_variables_and_fire %>%
+  left_join(dplyr::select(comb_overlap_SCANFI_and_selected_mammals_week_df, location, cluster), by = "location") 
   
 
+#adding seasons to selected_mammals_week data set
+
+# # Adding a new column for seasons
+# selected_mammals_week <- selected_mammals_week %>%
+#   mutate(season = case_when(
+#     week %in% 1:10 ~ "Winter",   # Weeks 1 to 10
+#     week %in% 11:24 ~ "Spring",   # Weeks 11 to 24
+#     week %in% 25:37 ~ "Summer",   # Weeks 25 to 37
+#     week %in% 38:51 ~ "Fall",     # Weeks 36 to 45
+#     week %in% 52:52 ~ "Winter",   # weeks 52 to 52
+#     TRUE ~ "Unknown"))
+
+
+#adding the land cover names column to overlap_SCANFI_cameras_table
+# 
+# overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
+#   mutate(land_cover_name = case_when(
+#     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 1 ~ "Bryoid",
+#     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 2 ~ "Herbs",
+#     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 3 ~ "Rock",
+#     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 4 ~ "Shrub",
+#     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 5 ~ "Treed broadleaf",
+#     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 6 ~ "Treed conifer",
+#     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 7 ~ "Treed mixed",
+#     SCANFI_att_nfiLandCover_SW_2020_v1.2 == 8 ~ "Water"
+#   ))
+
+
+#making an un-summarized data set with a different row for each camera for each week for each year
+#added two columns for number of grizzlies and gray wolves detected per day in a week
+all_variables <- all_variables %>%
+  mutate(grizzly_per_day = grizzly_bear/n_days_effort, 
+         gray_wolf_per_day = gray_wolf/n_days_effort)
+
+#made new dataset that included tri and grizz_per_day and gray_wolf_per_day
+all_variables_with_tri <- all_variables %>%
+  left_join(camera_locations_df %>% select(location, TRI_extracted), by = "location")
+
+all_variables_with_tri_and_species <- all_variables_with_tri %>%
+  mutate(grizzly_per_day = grizzly_bear/n_days_effort, 
+         gray_wolf_per_day = gray_wolf/n_days_effort)
+
+all_variables <- all_variables %>%
+  rename_with(~ gsub(" ", "_", .))
 
 
 
 
+#erics code for TRI
+#copernicus dem data (from eric)
+TRI_results <- spatialEco::tri(TDN_DEM, s = 3, exact = FALSE)
+TDN_tri <- st_transform(TDN_boundary, crs = st_crs(TRI_results))
 
+# Assign a CRS (replace with the correct CRS)
+# Assign a CRS using EPSG code
+crs(TDN_DEM) <- CRS("+init=epsg:32612")  # Example: EPSG 32633 for UTM Zone 33N
 
+TDN_boundary_projected <- st_transform(TDN_boundary, crs = st_crs(TDN_DEM)) %>%
+  st_buffer(1000)
+
+dem_cropped<-crop(TDN_DEM,TDN_boundary_projected)
+plot(dem_cropped, axes = FALSE)
+plot(st_geometry(TDN_dem), add = TRUE)
+plot(st_geometry(camera_locations),add = TRUE)
 
 
 

@@ -50,6 +50,7 @@ comb_overlap_SCANFI_and_selected_mammals_week <- merge(comb_overlap_SCANFI_and_s
 camera_locations_df <- as.data.frame(camera_locations_df)
 
 
+
 #adding tdn ecoregions to all_variables_with_tri_and_species
 model_variables <- merge(all_variables_with_tri_and_species, 
                                             camera_locations_df[, c("location")], 

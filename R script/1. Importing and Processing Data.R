@@ -163,10 +163,10 @@ esker_data <- st_read("spatial/shapefiles/Linear_Surficial_Features_of_Canada_(C
 TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif") 
 
 #load data
-TDN_DEM<- terra::rast("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif")
+TDN_DEM<- terra::rast("~/Desktop/Analysis/Learning/learning/Spatial/TDN_DEM/Copernicus_TDN_DEM.tif")
 
 #trying a different DEM dataset because the TDN_DEM has NAs in it
-ArcticDEM <- terra::rast("~/Desktop/Analysis/Learning/learning/Spatial/shapefiles/arctic_DEM_10m_TDN.tif")
+ArcticDEM <- terra::rast("~/Desktop/Analysis/Learning/learning/Spatial/TDN_DEM/ArcticDEM_500m/arcticdem_mosaic_500m_v4.1_dem.tif")
 
 #loading in nwt ecoregions
 nwt_ecoregions <- st_read("~/Desktop/Analysis/Learning/learning/Spatial/shapefiles/FMD_NWT_EcoRegions.shp")

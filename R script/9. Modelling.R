@@ -20,23 +20,6 @@ TDN_camera_clusters <- comb_overlap_SCANFI_and_selected_mammals_week %>%
   mutate(grizzly_per_day = grizzly_count_sum/n_days_effort_sum, 
          gray_wolf_per_day = gray_wolf_sum/n_days_effort_sum)
 
-#making an un-summarized data set with a different row for each camera for each week for each year
-#added two columns for number of grizzlies and gray wolves detected per day in a week
-all_variables <- all_variables %>%
-  mutate(grizzly_per_day = grizzly_bear/n_days_effort, 
-         gray_wolf_per_day = gray_wolf/n_days_effort)
-
-#made new dataset that included tri and grizz_per_day and gray_wolf_per_day
-all_variables_with_tri <- all_variables %>%
-  left_join(camera_locations_df %>% select(location, TRI_extracted), by = "location")
-
-all_variables_with_tri_and_species <- all_variables_with_tri %>%
-  mutate(grizzly_per_day = grizzly_bear/n_days_effort, 
-         gray_wolf_per_day = gray_wolf/n_days_effort)
-
-all_variables <- all_variables %>%
-  rename_with(~ gsub(" ", "_", .))
-
 
 #making a model set 
 #using a negative binomal mixed effects model with camera cluster and camera ID as fixed effects
@@ -53,10 +36,21 @@ mod_therm_all_4 <- glmmTMB(Muskox ~ scale(`Treed mixed`)+ scale(`Treed broadleaf
 model_global_all_5 <- glmmTMB(Muskox ~ scale(`Treed mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed broadleaf`) + scale(`Treed conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) +   
                                 offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables)
 
+
+
+
 #making summer model
 mod_null_sum_1 <- glmmTMB(Muskox ~ 1+ offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables  %>% filter(season == "Summer"))
+
 mod_pred_sum_2 <- glmmTMB(Muskox ~ scale(grizzly_bear) + scale(gray_wolf) + offset(log(n_days_effort)) + (1|cluster/location),
-                          family="nbinom2", data = model_variables %>% filter(season == "Summer"))
+                          family="nbinom2", data = model_variables %>% filter(season == "Summer")) #both grizz and wolf
+
+mod_pred_sum_2.1 <-  glmmTMB(Muskox ~ scale(grizzly_bear) + offset(log(n_days_effort)) + (1|cluster/location),
+                             family="nbinom2", data = model_variables %>% filter(season == "Summer")) #grizzly bear only
+
+mod_pred_sum_2.2 <- glmmTMB(Muskox ~ scale(gray_wolf) + offset(log(n_days_effort)) + (1|cluster/location),
+                         family="nbinom2", data = model_variables %>% filter(season == "Summer")) #gray wolf only
+
 mod_food_sum_3 <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed broadleaf`) + scale(Bryoid) + scale(Herbs) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) +
                             offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
 mod_therm_sum_4 <- glmmTMB(Muskox ~ scale(`Treed mixed`)+ scale(`Treed broadleaf`)+ scale(`Treed conifer`)+ scale(Water) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) +
@@ -64,7 +58,9 @@ mod_therm_sum_4 <- glmmTMB(Muskox ~ scale(`Treed mixed`)+ scale(`Treed broadleaf
 model_global_sum_5 <- glmmTMB(Muskox ~ scale(`Treed mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed broadleaf`) + scale(`Treed conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) +   
                                 offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer"))
 
-#making winter model (mod_pred_win_2, 4 not running)
+
+
+#making winter model 
 mod_null_win_1 <- glmmTMB(Muskox ~ 1+ offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables  %>% filter(season == "Winter"))
 mod_pred_win_2 <- glmmTMB(Muskox ~ scale(grizzly_bear) + scale(gray_wolf) + offset(log(n_days_effort)) + (1|cluster/location),
                           family="nbinom2", data = model_variables %>% filter(season == "Winter"))
@@ -74,6 +70,8 @@ mod_therm_win_4 <- glmmTMB(Muskox ~ scale(`Treed mixed`)+ scale(`Treed broadleaf
                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Winter"))
 model_global_win_5 <- glmmTMB(Muskox ~ scale(`Treed mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed broadleaf`) + scale(`Treed conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) +   
                                 offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Winter"))
+
+
 
 ##model selection for global models
 fmListSum<-model.sel(mod_null_all_1=mod_null_all_1, mod_pred_all_2=mod_pred_all_2, mod_food_all_3=mod_food_all_3, mod_therm_all_4=mod_therm_all_4, model_global_all_5=model_global_all_5)
@@ -89,11 +87,17 @@ summary(mod_therm_sum_4)
 fmListWin<-model.sel(mod_null_win_1=mod_null_win_1, mod_pred_win_2=mod_pred_win_2, mod_food_win_3=mod_food_win_3, mod_therm_win_4=mod_therm_win_4, model_global_win_5=model_global_win_5)
 fmListWin
 
-data_summer <- model_variables %>% filter(season == "Summer") %>% drop_na()
+data_winter <- model_variables %>% filter(season == "Winter") %>% drop_na()
   model_global_win_5 <- glmmTMB(Muskox ~ scale(`Treed mixed`) + scale(Shrub) + scale(Herbs) +   
-                                offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = data_summer, na.action = "na.fail")
-m <- dredge(model_global_win_5, fixed = ~offset(log(n_days_effort)) + (1|cluster))
+                                offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = data_winter, na.action = "na.fail")
+  
+winter_dredge <- dredge(model_global_win_5, fixed = ~offset(log(n_days_effort)) + (1|cluster))
 
+
+data_summer <- model_variables %>% filter(season == "Summer") %>% drop_na()
+model_global_sum_5 <- glmmTMB(Muskox ~ scale(`Treed mixed`) + scale(Shrub) + scale(Herbs) +   
+                                offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = data_summer, na.action = "na.fail")
+summer_dredge <- dredge(model_global_sum_5, fixed = ~offset(log(n_days_effort)) + (1|cluster))
 
 
 

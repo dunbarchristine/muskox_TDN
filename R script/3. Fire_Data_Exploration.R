@@ -14,13 +14,6 @@ camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/raw data/Spec
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
   st_transform(32612) #this number corresponds to the epsg code for utm code 12
 
-#NBAC <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/nbac_1972_2023_20240530_shp/nbac_1972_2023_20240530.shp")
-
-#reading in national fire database fire polygon data 
-#National_fire_database <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly_large_fires 2/NFDB_poly_20210707_large_fires.shp")
-
-#nfdb <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NFDB_poly/NFDB_poly_20210707.shp")
-
 #creating 300 m buffers for cameras
 camera_buffer <- st_buffer(camera_locations, 300)
 
@@ -37,13 +30,6 @@ fire_data_nbac_crop <- fire_data_nbac %>%
 
 saveRDS(fire_data_nbac_crop, "Processed_Data/fire_data_nbac_crop.rds")
 fire_data_nbac_crop <- readRDS("Processed_Data/fire_data_nbac_crop.rds")
-
-# # fire_data_nfdb_crop <- nfdb %>%
-#   #sf::st_intersection(camera_buffer_bb %>% st_transform(st_crs(nfdb))) %>%
-#   #sf::st_transform(32612)
-# 
-# saveRDS(fire_data_nfdb_crop, "Processed_Data/fire_data_nfdb_crop.rds")
-# fire_data_nfdb_crop <- readRDS("Processed_Data/fire_data_nfdb_crop.rds")
 
 ### combine cropped fire data
 fire_data_subset <- fire_data_nbac_crop %>%
