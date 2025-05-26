@@ -67,7 +67,8 @@ summarised_month <- wt_summarise_cam(
   variable = "detections",
   # Your desired output format (wide or long)
   output_format = "wide",
-  start_col_det = "start_time")
+  start_col_det = "start_time",
+  exclude_out_of_range = TRUE)
 
 
 #colnames(species_ind_det)
@@ -86,7 +87,8 @@ summarised_week <- wt_summarise_cam(
   variable = "detections",
   # Your desired output format (wide or long)
   output_format = "wide",
-  start_col_det = "start_time")
+  start_col_det = "start_time",
+  exclude_out_of_range = TRUE)
 
 
 ##pulling out the camera ID, week, n effort, griz and gray wolf and muskox 
