@@ -190,3 +190,22 @@ ggplot(data = tdn_ecoregions_2) +
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank())
 wd
+
+#comparing scanfi and lcc to determine which landcover dataset to use/justification for choosing lc/scanfi
+lcc_scanfi_cor <- cor(lcc_cameras_prop_columns_variables_only, overlap_SCANFI_cameras_table_variables_only)
+
+#looking at how correlated all the variables are 
+model_subset <- all_variables_with_tri_and_species %>% ungroup() %>%
+  select(-15:-24, -28, -29) %>%
+  distinct() %>%
+  select(-1)
+
+correlation_matrix <- cor(model_subset, use = "complete.obs")  # Use complete.obs to handle NAs
+corrplot(correlation_matrix, method="circle")
+
+
+
+
+
+
+

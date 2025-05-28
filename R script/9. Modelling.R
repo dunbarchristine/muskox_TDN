@@ -41,10 +41,25 @@ mod_pred_sum_2.2 <- glmmTMB(Muskox ~ scale(gray_wolf) + offset(log(n_days_effort
 
 mod_food_sum_3 <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed_broadleaf`) + scale(Bryoid) + scale(Herbs) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) +
                             offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+
+mod_food_sum_3.1 <- glmmTMB(Muskox ~ scale(Shrub) +
+                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just shrub variable (estimate: -0.25)
+
+mod_food_sum_3.2 <- glmmTMB(Muskox ~ scale(Herbs) +
+                            offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just herbs variable (estimate: 0.078)
+
+mod_food_sum_3.3 <- glmmTMB(Muskox ~ scale(Treed_broadleaf) +
+                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just Treed_broadleaf variable (estimate: 0.107)
+
+mod_food_sum_3.4 <- glmmTMB(Muskox ~ scale(Bryoid) +
+                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just bryoid variable (estimate: -0.0123)
+
+
+
 mod_therm_sum_4 <- glmmTMB(Muskox ~ scale(`Treed_mixed`)+ scale(`Treed_broadleaf`)+ scale(`Treed_conifer`)+ scale(Water) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) +
                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer"))
 model_global_sum_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) +  
-                                offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer"))
+                                offset(log(n_days_effort)) + (1|location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #this model will run with both cluster/location, and just with cluster/ just with location.
 
 
 
@@ -57,7 +72,7 @@ mod_food_win_3 <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed_broadleaf`) + sca
 mod_therm_win_4 <- glmmTMB(Muskox ~ scale(`Treed_mixed`)+ scale(`Treed_broadleaf`)+ scale(`Treed_conifer`) + scale(Water) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) +
                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Winter"))
 model_global_win_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) +   
-                                offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Winter"))
+                                offset(log(n_days_effort)) + (1|location), family="nbinom2", data = model_variables %>% filter(season == "Winter")) #this model wont run with cluster, but will run with location. Will not run with both cluster/location. 
 
 
 

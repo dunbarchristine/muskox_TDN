@@ -7,8 +7,8 @@
 #looking for explanatory variable outliers
 model_variables |> 
   mutate(log_esker_camera_distances = as.numeric(esker_camera_distances)) %>%
-  dplyr::select(c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Elevation", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "ECO2_NAM_1", "grizzly_per_day", "gray_wolf_per_day", "season")) %>%
-  pivot_longer(cols = c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Elevation", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "ECO2_NAM_1", "grizzly_per_day", "gray_wolf_per_day", "season")) |> 
+  dplyr::select(c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "grizzly_per_day", "gray_wolf_per_day")) %>%
+  pivot_longer(cols = c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "grizzly_per_day", "gray_wolf_per_day")) |> 
   ggplot() +
   geom_point(aes(x = value, y = rep(1:nrow(model_variables), each = n_distinct(name)))) +
   #geom_point(aes(x = value, y = name)) +
@@ -49,10 +49,10 @@ model_variables |>
 
 
 #What are the relationships between Y and X variables?
-Z <- as.vector(as.matrix(model_variables_only[, c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Elevation", "log_esker_camera_distances", "esker_camera_distances","fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "ECO2_NAM_1", "grizzly_per_day", "gray_wolf_per_day", "season")]))
-Y10 <- rep(model_variables_only$Muskox, 22)
-MyNames <- names(model_variables_only[,c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Elevation", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "ECO2_NAM_1", "grizzly_per_day", "gray_wolf_per_day", "season")])
-ID10 <- rep(MyNames, each = length(model_variables_only$Muskox))
+Z <- as.vector(as.matrix(model_variables[, c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "log_esker_camera_distances", "esker_camera_distances","fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "grizzly_per_day", "gray_wolf_per_day", "season")]))
+Y10 <- rep(model_variables$Muskox, 21)
+MyNames <- names(model_variables[,c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "grizzly_per_day", "gray_wolf_per_day", "season")])
+ID10 <- rep(MyNames, each = length(model_variables$Muskox))
 tibble(response = Y10, vars = Z, varnames = ID10) %>%
   ggplot(aes(x = vars, y = response)) +
   geom_point() +
@@ -78,15 +78,5 @@ all_variables %>%
 # Compute the correlation matrix for all numeric variables in 'variables_only'
 #cor_matrix <- cor(all_variables_with_tri_and_species, use = "complete.obs") #complete.obs ensures that only complete cases (rows with no missing values) are used to compute the correlation.
 
-#comparing scanfi and lcc to determine which landcover dataset to use/justification for choosing lc/scanfi
-lcc_scanfi_cor <- cor(lcc_cameras_prop_columns_variables_only, overlap_SCANFI_cameras_table_variables_only)
 
-#looking at how correlated all the variables are 
-model_subset <- all_variables_with_tri_and_species %>% ungroup() %>%
- select(-15:-24, -28, -29) %>%
-  distinct() %>%
-  select(-1)
-
-correlation_matrix <- cor(model_subset, use = "complete.obs")  # Use complete.obs to handle NAs
-corrplot(correlation_matrix, method="circle")
 
