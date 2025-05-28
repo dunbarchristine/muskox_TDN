@@ -57,18 +57,18 @@ model_variables <- merge(all_variables_with_tri_and_species,
                                             by = "location", 
                                           all.x = TRUE) 
 #saving model_variables as RDS
-saveRDS(model_variables,"RDS files/model_variables.rds")
-model_variables <- readRDS("RDS files/model_variables.rds")
+saveRDS(model_variables, "~/Desktop/Analysis/Learning/learning/RDS files/model_variables.rds")
+model_variables <- readRDS("~/Desktop/Analysis/Learning/learning/RDS files/model_variables.rds")
 
 
-#making new dataset with just variables I will be testing
-model_variables_only <- model_variables %>%
-  ungroup() %>%  # Ungroup the dataset to prevent warnings
-  select(`Treed broadleaf`, `Treed conifer`, `Treed mixed`, Bryoid, Shrub, Water, Herbs,
-         gray_wolf, grizzly_bear, Muskox, Elevation, season, esker_camera_distances,
-         fire_age0, fire_age1, fire_age2, fire_age3, fire_age4, n_days_effort, cluster, log_esker_camera_distances,
-         grizzly_per_day, gray_wolf_per_day, TRI_extracted, ECO2_NAM_1) %>%
-  select(-matches("^location$"))
+# #making new dataset with just variables I will be testing
+# model_variables_only <- model_variables %>%
+#   ungroup() %>%  # Ungroup the dataset to prevent warnings
+#   select(`Treed broadleaf`, `Treed conifer`, `Treed mixed`, Bryoid, Shrub, Water, Herbs,
+#          gray_wolf, grizzly_bear, Muskox, Elevation, season, esker_camera_distances,
+#          fire_age0, fire_age1, fire_age2, fire_age3, fire_age4, n_days_effort, cluster, log_esker_camera_distances,
+#          grizzly_per_day, gray_wolf_per_day, TRI_extracted, ECO2_NAM_1) %>%
+#   select(-matches("^location$"))
 
 
 

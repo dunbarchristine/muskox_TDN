@@ -5,12 +5,12 @@
 
 
 #looking for explanatory variable outliers
-model_variables_only |> 
+model_variables |> 
   mutate(log_esker_camera_distances = as.numeric(esker_camera_distances)) %>%
   dplyr::select(c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Elevation", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "ECO2_NAM_1", "grizzly_per_day", "gray_wolf_per_day", "season")) %>%
   pivot_longer(cols = c("Treed broadleaf", "Treed conifer", "Treed mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Elevation", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "ECO2_NAM_1", "grizzly_per_day", "gray_wolf_per_day", "season")) |> 
   ggplot() +
-  geom_point(aes(x = value, y = rep(1:nrow(model_variables_only), each = n_distinct(name)))) +
+  geom_point(aes(x = value, y = rep(1:nrow(model_variables), each = n_distinct(name)))) +
   #geom_point(aes(x = value, y = name)) +
   facet_wrap(~ name, scales = "free") +
   labs(x = "Value of the variable",
@@ -18,24 +18,24 @@ model_variables_only |>
   theme_bw()
 
 #was getting error message from the code above saying: error in 'pivot_longer()': "cant combine 'treed broadleaf' <double> and 'ECO2_NAM_1' <character>. Chatgpt gave me this code: and it seemed to work?
-model_variables_only |>
+model_variables |>
   mutate(log_esker_camera_distances = as.numeric(esker_camera_distances)) %>%
   dplyr::select(where(is.numeric)) %>%
   pivot_longer(cols = everything()) |>
   ggplot() +
-  geom_point(aes(x = value, y = rep(1:nrow(model_variables_only), each = n_distinct(name)))) +
+  geom_point(aes(x = value, y = rep(1:nrow(model_variables), each = n_distinct(name)))) +
   facet_wrap(~ name, scales = "free") +
   labs(x = "Value of the variable", y = "Order of the data") +
   theme_bw()
 
 
 #looking for muskox outliers
-model_variables_only |> 
+model_variables |> 
   #mutate(distance_to_esker_m = as.numeric(distance_to_esker_m)) %>%
   dplyr::select(c(Muskox)) %>%
   pivot_longer(cols = c(Muskox)) |> 
   ggplot() +
-  geom_point(aes(x = value, y = rep(1:nrow(model_variables_only), each = 1))) +
+  geom_point(aes(x = value, y = rep(1:nrow(model_variables), each = 1))) +
   facet_wrap(~ name, scales = "free") +
   labs(x = "Value of the variable",
        y = "Order of the data") +

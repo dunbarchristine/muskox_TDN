@@ -1,6 +1,21 @@
+library(raster)
+library(tidyverse)
+library(terra)
+
+
 #cropping arcticdem to tdn boundary 
 TDN_boundary_projected_ArcticDEM <- st_transform(TDN_boundary, crs = st_crs(ArcticDEM)) %>%
   st_buffer(1000)
+
+#extract the elevation at camera site. we are using camera buffer because it has a geometry column.
+arctic_DEM_500_mosaic_camera <- terra::extract(ArcticDEM, camera_buffer, fun=mean)
+
+#add the value to the locations file if needed
+camera_buffer$Arctic_DEM_500m_elevation_m<- arctic_DEM_500_mosaic_camera$arcticdem_mosaic_500m_v4.1_dem
+
+#deleting old elevation column that gave NAs
+model_variables <- model_variables %>%
+  select(-Elevation)
 
 ArcticDEM_cropped<-crop(ArcticDEM,TDN_boundary_projected_ArcticDEM)
 plot(ArcticDEM_cropped, axes = FALSE)
@@ -10,86 +25,56 @@ plot(st_geometry(camera_locations),add = TRUE)
 plot(ArcticDEM_cropped)  # First plot the raster
 plot(TDN_boundary_projected_ArcticDEM, add = TRUE, border = "red", lwd = 2)  # Overlay boundary
 
+
 #Terrain Ruggedness Index (TRI)
 #ArcticDEM data
 TRI_Results_ArcticDEM <- spatialEco::tri(ArcticDEM_cropped, s = 3, exact = FALSE)
 #ArcticDEM for TDI
 TDN_tri_ArcticDEM <- st_transform(TDN_boundary, crs = st_crs(TRI_Results_ArcticDEM))
 
-#Load tdn boundary data
+#ArcticDEM data with data from Claudia (arctic_DEM_500_mosaic_camera). Not working, needs to be spatraster
 
-#using arcticDEM data and cropping it to TDN boundary, similar to above
-# TDN_boundary_projected <- st_transform(TDN_boundary, crs = st_crs(TDN_DEM)) %>%
-#   st_buffer(1000)
+TRI_Results_ArcticDEM_mosaic <- spatialEco::tri(arctic_DEM_500_mosaic_camera, s = 3, exact = FALSE)
+ #ArcticDEM for TDI
+TDN_tri_ArcticDEM_mosaic <- st_transform(TDN_boundary, crs = st_crs(TRI_Results_ArcticDEM_mosaic))
 
-TDN_boundary_projected_ArcticDEM <- st_transform(TDN_boundary, crs = st_crs(ArcticDEM)) %>%
-  st_buffer(1000)
+#calculating TRI. grabbed this code from Claudias GitHub
+TDN_tri_arctic<-  terra::terrain(ArcticDEM, v="TRI", unit = "degrees")
 
-ArcticDEM_cropped<-crop(ArcticDEM,TDN_boundary_projected_ArcticDEM)
 #saving model_variables as RDS
 saveRDS(ArcticDEM_cropped,"~/Desktop/Analysis/Learning/learning/RDS files/ArcticDEM_cropped.rds")
 ArcticDEM_cropped <- readRDS("~/Desktop/Analysis/Learning/learning/RDS files/ArcticDEM_cropped.rds")
 
-#trying to make table with elevation for each camera location (COPERNICUS TDN_DEM)
+#adding Arctic_DEM_500m_elevation_m to model_variables instead of having the previous column "Elevations". "Elevations" column was giving me NAs
+model_variables <- model_variables %>%
+  dplyr::left_join(
+    camera_buffer %>%
+      dplyr::select(location, Arctic_DEM_500m_elevation_m),
+    by = "location"
+  )
+
 # Extract values for each camera location
 elevations <- raster::extract(ArcticDEM_cropped, camera_locations)
 esker_camera_distances <- terra::extract(esker_dist, camera_locations)
-TRI_extracted <- raster::extract(TRI_Results, camera_locations)
-
-
-crs(ArcticDEM_cropped) <- CRS("+init=epsg:32612")  # Example: EPSG 32633 for UTM Zone 33N
-camera_locations_projected <- vect(camera_locations_projected)  # converts sf to SpatVector
-# Extract TRI values
-TRI_extracted_arcticDEM <- terra::extract(TRI_Results_ArcticDEM, camera_locations_projected)
-
-# TRI_extracted_arcticDEM <- raster::extract(TRI_Results_ArcticDEM, camera_locations)
-
-
-# Combine the camera locations data with the extracted elevation values
-# Convert camera_locations to a data frame if it's an sf object
-camera_locations_df <- st_as_sf(camera_locations) %>%
-  st_drop_geometry()  # Remove geometry to get a regular data frame
-
-# Combine the extracted elevations with the camera location data
-camera_locations_df$elevations <- elevations$ArcticDEM_cropped
-camera_locations_df$esker_camera_distances <- esker_camera_distances$layer
-camera_locations_df$TRI_extracted <- TRI_extracted$lyr.1
-
-# Merge the datasets based on 'camera_id'
-adding_variables_elevations_eskers <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
-                                            camera_locations_df[, c("location", "elevations", "esker_camera_distances")], 
-                                            by = "location", 
-                                            all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
+TRI_extracted <- raster::extract(TDN_tri_arctic, camera_locations)
 
 #adding terrain ruggedness index (TRI) to all_variables
 all_variables_with_tri <- all_variables %>%
   left_join(camera_locations_df %>% select(location, TRI_extracted), by = "location")
 
-# all_variables <- all_variables %>%
-#   mutate(grizzly_per_day = grizzly_bear/n_days_effort, 
-#          gray_wolf_per_day = gray_wolf/n_days_effort)
 
-#copernicus
 #made new dataset that included tri and grizz_per_day and gray_wolf_per_day
 all_variables_with_tri <- all_variables %>%
   left_join(camera_locations_df %>% select(location, TRI_extracted), by = "location")
 
-all_variables_with_tri_and_species_copernicus <- all_variables_with_tri %>%
+#adding new variables to "all_variables_with_tri_and_species". This dataset is used to make model_variables (in 7.model dataset script)
+all_variables_with_tri_and_species <- all_variables_with_tri %>%
   mutate(grizzly_per_day = grizzly_bear/n_days_effort, 
          gray_wolf_per_day = gray_wolf/n_days_effort)
 
-all_variables <- all_variables %>%
-  rename_with(~ gsub(" ", "_", .))
-
-#arcticdem
-# # Remove specific columns and rename 'elevations.y' to 'elevation'
-# adding_variables_elevations_eskers <- adding_variables_elevations_eskers %>%
-#   dplyr::select(-c(elevation.x, elevation.y, elevations.x)) %>%
-#   rename(elevation = elevations.y)
 
 
-
-#eskers
+############### eskers ################
 # Check for empty geometries
 esker_data_empty <- esker_data[st_is_empty(esker_data), ]
 esker_data_non_empty <- esker_data[!st_is_empty(esker_data), ]

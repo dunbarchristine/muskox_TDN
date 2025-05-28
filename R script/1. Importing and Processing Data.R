@@ -7,8 +7,8 @@
 #this package has the github function
 #install.packages("devtools")
 
-#install package WildRtrax
-#remotes::install_github("ABbiodiversity/wildrtrax", force = TRUE)
+install.package(WildRtrax)
+remotes::install_github("ABbiodiversity/wildrtrax", force = TRUE)
 
 #load the package
 install.packages("writexl")
@@ -23,12 +23,9 @@ install.packages("rnaturalearthdata")
 library(DHARMa)
 library(devtools)
 library(wildrtrax)
-library(dplyr)
-library(png)
 library(writexl)
 library(RColorBrewer)
 library(terra)
-library(raster)
 library(ggspatial)
 library(sf)
 library(prettymapr)
@@ -44,7 +41,14 @@ setwd("~/Desktop/Analysis/Learning/learning/spatial")
 
 
 #load species data
-species_all <- read.csv("~/Desktop/Analysis/Learning/learning/Raw Data/Species Raw Data (May 2025)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_main_report.csv")
+species_all <- read.csv("~/Desktop/Analysis/Learning/learning/Raw Data/SpeciesRawDownload/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_main_report.csv")
+
+images <- wt_download_report(project_id = 712, sensor_id = 'CAM', reports = "main", weather_cols = F) %>%
+  tibble::as_tibble()
+
+#Authenticate in WildTrax
+Sys.setenv(WT_USERNAME = 'christinedunbar3@gmail.com', WT_PASSWORD = 'Theweeknd88!')
+wt_auth()
 
 #create independent detections
 species_ind_data <- wt_ind_detect(
@@ -54,6 +58,7 @@ species_ind_data <- wt_ind_detect(
   datetime_col = image_date_time,
   remove_human = TRUE,
   remove_domestic = TRUE)
+
 
 #Summarising the independent detections by month
 summarised_month <- wt_summarise_cam(
