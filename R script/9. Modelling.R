@@ -54,10 +54,37 @@ mod_food_sum_3.3 <- glmmTMB(Muskox ~ scale(Treed_broadleaf) +
 mod_food_sum_3.4 <- glmmTMB(Muskox ~ scale(Bryoid) +
                               offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just bryoid variable (estimate: -0.0123)
 
+mod_food_sum_3.5 <- glmmTMB(Muskox ~ scale(fire_age1) +
+                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age1 variable (estimate: 0.2134)
 
+mod_food_sum_3.6 <- glmmTMB(Muskox ~ scale(fire_age2) +
+                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age2 variable (estimate: -0.1442)
+
+mod_food_sum_3.7 <- glmmTMB(Muskox ~ scale(fire_age3) +
+                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age3 variable (estimate: 0.008601)
+
+mod_food_sum_3.8 <- glmmTMB(Muskox ~ scale(fire_age0) +
+                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age0 variable (estimate: -0.04603)
 
 mod_therm_sum_4 <- glmmTMB(Muskox ~ scale(`Treed_mixed`)+ scale(`Treed_broadleaf`)+ scale(`Treed_conifer`)+ scale(Water) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) +
-                             offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer"))
+                             offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #all variables I think support thermoregulation hypothesis
+
+mod_therm_sum_4.1 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) +
+                             offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just treed_mixed variable (estimate: -0.1126)
+
+mod_therm_sum_4.2 <- glmmTMB(Muskox ~ scale(`Treed_broadleaf`) +
+                               offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just treed_broadleaf variable (estimate: 0.1076)
+
+mod_therm_sum_4.3 <- glmmTMB(Muskox ~ scale(`Treed_conifer`) +
+                               offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just treed_conifer variable (estimate: 0.1482)
+
+mod_therm_sum_4.4 <- glmmTMB(Muskox ~ scale(`Water`) +
+                               offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just water variable (estimate: 0.08528)
+
+mod_therm_sum_4.5 <- glmmTMB(Muskox ~ scale(`log_esker_camera_distances`) +
+                               offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just log_esker_camera_distances variable (estimate: 0.01676)
+
+
 model_global_sum_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) +  
                                 offset(log(n_days_effort)) + (1|location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #this model will run with both cluster/location, and just with cluster/ just with location.
 
