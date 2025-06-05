@@ -9,6 +9,8 @@
 
 install.package(WildRtrax)
 remotes::install_github("ABbiodiversity/wildrtrax", force = TRUE)
+devtools::install_github("ABbiodiversity/wildrtrax", force = TRUE)
+
 
 #load the package
 install.packages("writexl")
@@ -59,7 +61,7 @@ species_ind_data <- wt_ind_detect(
   remove_human = TRUE,
   remove_domestic = TRUE)
 
-
+#old
 #Summarising the independent detections by month
 summarised_month <- wt_summarise_cam(
   # Supply your detection data
@@ -69,11 +71,20 @@ summarised_month <- wt_summarise_cam(
   # Now specify the time interval you're interested in
   time_interval = "month",
   # What variable are you interested in?
-  variable = "detections",
+  variable = "detections")
   # Your desired output format (wide or long)
-  output_format = "wide",
-  start_col_det = "start_time",
-  exclude_out_of_range = TRUE)
+  #output_format = "wide",
+  #start_col_det = "start_time")
+  #exclude_out_of_range = TRUE)
+
+#new
+# Summarising the independent detections by month
+summarised_month <- wt_summarise_cam(
+  detect_data = species_ind_data,
+  raw_data = species_all,
+  time_interval = "month",
+  variable = "detections"
+)
 
 
 #colnames(species_ind_det)
@@ -89,11 +100,11 @@ summarised_week <- wt_summarise_cam(
   # Now specify the time interval you're interested in
   time_interval = "week",
   # What variable are you interested in?
-  variable = "detections",
+  variable = "detections")
   # Your desired output format (wide or long)
-  output_format = "wide",
-  start_col_det = "start_time",
-  exclude_out_of_range = TRUE)
+  # output_format = "wide",
+  # start_col_det = "start_time",
+  # exclude_out_of_range = TRUE)
 
 
 ##pulling out the camera ID, week, n effort, griz and gray wolf and muskox 
@@ -131,7 +142,7 @@ camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/Raw Data/Spec
 #creating 300 m buffers for cameras
 camera_buffer <- st_buffer(camera_locations, 300)
 
-SCANFI_landcover <- rast("~/Desktop/Analysis/Learning/learning/Raw Data/SCANFI_att_nfiLandCover_SW_2020_v1.2.tif")
+SCANFI_landcover <- rast("~/Desktop/Analysis/Learning/learning/Spatial/SCANFI/SCANFI_att_nfiLandCover_SW_2020_v1.2.tif")
 
 SCANFI_landcover_cropped <- crop(SCANFI_landcover, TDN_boundary %>% st_transform(crs(SCANFI_landcover))) %>% 
   project("EPSG:32612", method = "near") #SCANFI_landcover_cropped is the scanfi data with the camera buffers
@@ -147,10 +158,7 @@ writeRaster(SCANFI_landcover_cropped, "spatial/SCANFI_landcover_cropped.tif", da
 SCANFI_landcover_cropped <- rast("spatial/SCANFI_landcover_cropped.tif")
 
 
-
 cropped_SCANFI_TDN_Boundary <- crop(SCANFI_landcover_cropped, TDN_boundary, mask = TRUE)
-
-#fire_rast_cropped_TDN <- crop(fire_rast, TDN_boundary, mask = TRUE)
 
 Camera_buffer_zones <- rasterize(vect(camera_buffer), SCANFI_landcover_cropped, field = "location") 
 
@@ -181,9 +189,31 @@ nwt_ecoregions <- st_read("~/Desktop/Analysis/Learning/learning/Spatial/shapefil
 TDN_boundary <- st_transform(TDN_boundary, st_crs(nwt_ecoregions))
 
 cropped_ecoregions_TDN_Boundary <- st_intersection(nwt_ecoregions, TDN_boundary)
+# 
+# tdn_ecoregions <- crop(nwt_ecoregions, TDN_boundary %>% st_transform(crs(nwt_ecoregions))) %>% 
+#   project("EPSG:32612", method = "near") 
 
-tdn_ecoregions <- crop(nwt_ecoregions, TDN_boundary %>% st_transform(crs(nwt_ecoregions))) %>% 
-  project("EPSG:32612", method = "near") 
+tdn_ecoregions <- st_transform(nwt_ecoregions, crs = st_crs(TDN_boundary)) %>%
+  st_intersection(st_transform(TDN_boundary, crs = st_crs(nwt_ecoregions))) %>%
+  st_transform(crs = 32612)  # EPSG:32612 is UTM Zone 12N
+
+#adding tdn ecoregions to all_variables_with_tri_and_species
+model_variables <- merge(all_variables_with_tri_and_species, 
+                         camera_locations_df[, c("location")], 
+                         by = "location", 
+                         all.x = TRUE)
+
+
+locs_ecoregions <- camera_locations %>%
+  st_transform(crs = st_crs(cropped_ecoregions_TDN_Boundary)) #change the projection to match the raster
+
+# Find overlaps
+ecoregions_overlap <- st_join(locs_ecoregions, cropped_ecoregions_TDN_Boundary)
+ecoregions_overlap <- as.data.frame(ecoregions_overlap)
+
+# Make a new column in cameras (if needed)
+model_variables <- model_variables %>% 
+  left_join(ecoregions_overlap %>% select(location, ECO1_NAM_1, ECO2_NAM_1, ECO3_NAM_1, ECO4_NAM_1), by="location")
 
 #loading in nwt boundary 
 nwt_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/gpr_000a11a_e.shp")

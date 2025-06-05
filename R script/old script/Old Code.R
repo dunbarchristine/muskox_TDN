@@ -1078,5 +1078,102 @@ mod_nb <- glmer.nb(Muskox ~ grizzly_per_day +
 glmmTMB::fixef()
 
 
+#mod_therm_sum_4 so far is the best fit
+# summary(mod_therm_sum_4)
 
 
+#making winter model (old)
+mod_null_win_1 <- glmmTMB(Muskox ~ 1+ offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables  %>% filter(season == "Winter"))
+mod_pred_win_2 <- glmmTMB(Muskox ~ scale(grizzly_bear) + scale(gray_wolf) + offset(log(n_days_effort)) + (1|cluster/location),
+                          family="nbinom2", data = model_variables %>% filter(season == "Winter"))
+mod_food_win_3 <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed_broadleaf`) + scale(Bryoid) + scale(Herbs) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) +
+                            offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Winter")) 
+mod_therm_win_4 <- glmmTMB(Muskox ~ scale(`Treed_mixed`)+ scale(`Treed_broadleaf`)+ scale(`Treed_conifer`) + scale(Water) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) +
+                             offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Winter"))
+mod_global_win_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) +   
+                              offset(log(n_days_effort)) + (1|location), family="nbinom2", data = model_variables %>% filter(season == "Winter")) #this model wont run with cluster, but will run with location. Will not run with both cluster/location. 
+
+#global models
+mod_null_all_1 <- glmmTMB(Muskox ~ 1+ offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables)
+mod_pred_all_2 <- glmmTMB(Muskox ~ scale(grizzly_bear) + scale(gray_wolf) + offset(log(n_days_effort)) + (1|cluster/location),
+                          family="nbinom2", data = model_variables)
+mod_food_all_3 <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed_broadleaf`) + scale(Bryoid) + scale(Herbs) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) +
+                            offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables) 
+mod_therm_all_4 <- glmmTMB(Muskox ~ scale(`Treed_mixed`)+ scale(`Treed_broadleaf`)+ scale(`Treed_conifer`)+ scale(Water) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) +
+                             offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables)
+mod_global_all_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) +   
+                              offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables)
+
+
+
+
+
+#getting proportion of burn within each 300 m buffer
+# fire_variables <- fire_buffer_proportion %>%
+#   as_tibble() %>%
+#   mutate(fire_age = replace_na(fire_age, 4)) %>% #4 equals anything before 1972 for NBAC 
+#   drop_na(location) %>%
+#   group_by(location) %>%
+#   mutate(fire_prop = n/sum(n)) %>%
+#   #fire_variables <- fire_buffer_proportion %>%
+#   mutate(fire_presence_or_absence = case_when(
+#     fire_age == 4 ~ 0,  # For values 4, assign 0 (absence)
+#     fire_age %in% 0:3 ~ 1  # For values 0 to 3, assign 1 (presence)
+#   )) %>%
+#   dplyr::select(fire_age, fire_prop, location) %>%
+#   pivot_wider(
+#     names_prefix = "fire_age",
+#     names_from = fire_age,  # Create a column for each land cover type
+#     values_from = fire_prop,  # Take values from the 'land_cover_prop' column
+#     values_fill = list(fire_prop = 0)  # Fill missing values with 0 (no land cover)
+#)
+
+# fire_variables <- fire_buffer_proportion %>%
+#   # Ensure that fire_age is numeric
+#   mutate(fire_age = as.numeric(fire_age)) %>%
+#   mutate(
+#     fire_presence_or_absence = case_when(
+#       fire_age == 4 ~ 0,  # For values 4, assign 0 (absence)
+#       fire_age %in% 0:3 ~ 1  # For values 0 to 3, assign 1 (presence)
+#     )
+#   ) %>%
+#   dplyr::select(fire_age, fire_prop, location) %>%
+#   pivot_wider(
+#     names_prefix = "fire_age",
+#     names_from = fire_age,  # Create a column for each fire age
+#     values_from = fire_prop,  # Take values from the 'fire_prop' column
+#     values_fill = list(fire_prop = 0)  # Fill missing values with 0 (no fire proportion)
+#   )
+
+#write_xlsx(comb_overlap_SCANFI_and_selected_mammals_week, "comb_overlap_SCANFI_and_selected_mammals_week.xlsx")
+
+####### christine playing around with fire data. trying to add tdn_boundary and camera locations to fire_rast
+
+# Convert boundary and camera locations to sf objects if they aren't already
+#TDN_boundary <- st_as_sf(TDN_boundary) %>%
+#sf::st_transform(4326)
+
+# camera_locations_sf <- st_as_sf(camera_locations) %>%
+# sf::st_transform(4326)
+# 
+# # Convert raster to a data frame for ggplot
+# fire_rast_df <- as.data.frame(fire_rast, xy = TRUE, na.rm = TRUE)
+# 
+# fire_buffer_proportion <- fire_buffer_proportion %>%
+#   mutate(recent_fire = 
+#            ifelse(YEAR >= 2022 - 20, 1,
+#                   0)) 
+
+#adding more age classes to "recent_fire" column
+#fire_buffer_proportion <- fire_buffer_proportion %>%
+# mutate(recent_fire = case_when(
+#   YEAR >= 2022 - 10 ~ 0,  # 0-10 year old fires
+#   YEAR >= 2022 - 20 & YEAR < 2022 - 10 ~ 1,  # 11-20 year old fires
+#   YEAR >= 2022 - 30 & YEAR < 2022 - 20 ~ 2,  # 21-30 year old fires
+#   YEAR < 2022 - 30 ~ 3,  # > 30 year old fires
+#   TRUE ~ NaN  # Assign NaN for any cases that don't match
+# ))
+
+
+
+#fire_rast_cropped_TDN <- crop(fire_rast, TDN_boundary, mask = TRUE)

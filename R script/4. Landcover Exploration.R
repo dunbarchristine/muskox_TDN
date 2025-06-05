@@ -34,9 +34,9 @@ TDN_tri_ArcticDEM <- st_transform(TDN_boundary, crs = st_crs(TRI_Results_ArcticD
 
 #ArcticDEM data with data from Claudia (arctic_DEM_500_mosaic_camera). Not working, needs to be spatraster
 
-TRI_Results_ArcticDEM_mosaic <- spatialEco::tri(arctic_DEM_500_mosaic_camera, s = 3, exact = FALSE)
- #ArcticDEM for TDI
-TDN_tri_ArcticDEM_mosaic <- st_transform(TDN_boundary, crs = st_crs(TRI_Results_ArcticDEM_mosaic))
+# TRI_Results_ArcticDEM_mosaic <- spatialEco::tri(arctic_DEM_500_mosaic_camera, s = 3, exact = FALSE)
+#  #ArcticDEM for TDI
+# TDN_tri_ArcticDEM_mosaic <- st_transform(TDN_boundary, crs = st_crs(TRI_Results_ArcticDEM_mosaic))
 
 #calculating TRI. grabbed this code from Claudias GitHub
 TDN_tri_arctic<-  terra::terrain(ArcticDEM, v="TRI", unit = "degrees")
@@ -170,10 +170,25 @@ nwt_ecoregions_2 <- nwt_ecoregions %>%
   summarize(geometry = st_union(geometry)) 
 
 
-#making mao for just tdn ecoregions
+#making map for just tdn ecoregions
 tdn_ecoregions_2 <- cropped_ecoregions_TDN_Boundary %>%
   group_by(ECO2_NAM_1) %>% 
   summarize(geometry = st_union(geometry)) 
+
+
+
+
+
+library(sf)
+# Set the correct CRS (replace with your known EPSG if different)
+st_crs(tdn_ecoregions) <- 32612
+
+# Ensure both datasets use the same CRS
+tdn_ecoregions <- st_transform(tdn_ecoregions, crs = st_crs(model_variables))
+
+# Perform spatial join
+model_variables_joined <- st_join(model_variables, tdn_ecoregions, left = TRUE)
+
 
 
 #plotting map of tdn ecoregions
@@ -190,6 +205,21 @@ ggplot(data = tdn_ecoregions_2) +
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank())
 wd
+
+
+#Calculating the Ecoregion for each Camera location
+locs_ecoregions <- cameras_sf %>%
+  st_transform(crs = st_crs(ecoregions_cropped)) #change the projection to match the raster
+
+# Find overlaps
+ecoregions_overlap <- st_join(locs_ecoregions, ecoregions_cropped)
+ecoregions_overlap <- as.data.frame(ecoregions_overlap)
+
+# Make a new column in cameras (if needed)
+cameras <- cameras %>% 
+  left_join(ecoregions_overlap %>% select(location, ECO1_NAM_1, ECO2_NAM_1, ECO3_NAM_1, ECO4_NAM_1, ecoregion), by="location")
+
+
 
 #comparing scanfi and lcc to determine which landcover dataset to use/justification for choosing lc/scanfi
 lcc_scanfi_cor <- cor(lcc_cameras_prop_columns_variables_only, overlap_SCANFI_cameras_table_variables_only)

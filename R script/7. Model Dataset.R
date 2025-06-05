@@ -19,13 +19,29 @@ overlap_SCANFI_cameras_table_variables_only <- overlap_SCANFI_cameras_table[, -1
 overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
   dplyr::select(-n) %>%  
   pivot_wider(
-    names_from = cover,  # Create a column for each land cover type
+    names_from = SCANFI_att_nfiLandCover_SW_2020_v1.2,  # Create a column for each land cover type
     values_from = landcover_prop,  # Take values from the 'land_cover_prop' column
     values_fill = list(landcover_prop = 0)  # Fill missing values with 0 (no land cover)
   )
 
-#combining overlap_SCANFI_cameras_table and selected_mammals_week to become one dataset called
+#adding the land cover names column to overlap_SCANFI_cameras_table
+overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
+  rename(
+    Bryoid = `1`,
+    Herbs = `2`,
+    Rock = `3`,
+    Shrub = `4`,
+    `Treed broadleaf` = `5`,
+    `Treed conifer` = `6`,
+    `Treed mixed` = `7`,
+    Water = `8`
+  )
 
+
+
+
+
+#combining overlap_SCANFI_cameras_table and selected_mammals_week to become one dataset called
 # Merge the datasets based on a common column (e.g., "location")
 comb_overlap_SCANFI_and_selected_mammals_week<- merge(overlap_SCANFI_cameras_table, 
                                                       selected_mammals_week, 
@@ -45,6 +61,9 @@ comb_overlap_SCANFI_and_selected_mammals_week <- merge(comb_overlap_SCANFI_and_s
                                                        camera_locations_df[, c("location", "elevation")], 
                                                        by = "location", 
                                                        all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
+
+saveRDS(comb_overlap_SCANFI_and_selected_mammals_week, "~/Desktop/Analysis/Learning/learning/RDS files/comb_overlap_SCANFI_and_selected_mammals_week.rds")
+comb_overlap_SCANFI_and_selected_mammals_week <- readRDS("~/Desktop/Analysis/Learning/learning/RDS files/comb_overlap_SCANFI_and_selected_mammals_week.rds")
 
 # Convert tibble to a regular data.frame (if necessary)
 camera_locations_df <- as.data.frame(camera_locations_df)
@@ -71,6 +90,14 @@ model_variables <- readRDS("~/Desktop/Analysis/Learning/learning/RDS files/model
 #   select(-matches("^location$"))
 
 
+
+#renaming columns/removing columns
+model_variables <- model_variables %>%
+  select(-Arctic_DEM_500m_elevation_m.y, -geometry.y) %>%  # Remove unwanted columns
+  rename(
+    Arctic_DEM_500m_elevation_m = Arctic_DEM_500m_elevation_m.x,
+    geometry = geometry.x
+  )
 
 
 

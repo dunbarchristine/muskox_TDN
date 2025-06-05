@@ -6,8 +6,9 @@ library(readxl)
 
 ### Load fire data
 
-fire_data_nbac <- sf::read_sf("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/NBAC/nbac_1972_2024_20250506_shp/nbac_1972_2024_20250506.shp") 
-#fire_data_nfd <- sf::read_sf("data/raw/fire/NFD/NFDB_poly_20210707.shp") 
+fire_data_nbac <- sf::read_sf("~/Desktop/Analysis/Learning/learning/Spatial/shapefiles/NBAC/NBAC_1972to2024_20250506_shp") 
+
+
 
 camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/raw data/Species Raw Data (May 2025)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
   drop_na("longitude") %>%
@@ -28,7 +29,7 @@ fire_data_nbac_crop <- fire_data_nbac %>%
   sf::st_intersection(camera_buffer_bb %>% st_transform(st_crs(fire_data_nbac))) %>%
   sf::st_transform(32612)
 
-saveRDS(fire_data_nbac_crop, "Processed_Data/fire_data_nbac_crop.rds")
+saveRDS(fire_data_nbac_crop, saveRDS(fire_data_nbac_crop, "~/Desktop/Analysis/Learning/learning/RDS files/fire_data_nbac_crop.rds"))
 fire_data_nbac_crop <- readRDS("Processed_Data/fire_data_nbac_crop.rds")
 
 ### combine cropped fire data
@@ -96,44 +97,6 @@ fire_variables <- fire_buffer_proportion %>%
     values_fill = list(fire_prop = 0)  # Fill missing values with 0
   )
 
-#getting proportion of burn within each 300 m buffer
-# fire_variables <- fire_buffer_proportion %>%
-#   as_tibble() %>%
-#   mutate(fire_age = replace_na(fire_age, 4)) %>% #4 equals anything before 1972 for NBAC 
-#   drop_na(location) %>%
-#   group_by(location) %>%
-#   mutate(fire_prop = n/sum(n)) %>%
-#   #fire_variables <- fire_buffer_proportion %>%
-#   mutate(fire_presence_or_absence = case_when(
-#     fire_age == 4 ~ 0,  # For values 4, assign 0 (absence)
-#     fire_age %in% 0:3 ~ 1  # For values 0 to 3, assign 1 (presence)
-#   )) %>%
-#   dplyr::select(fire_age, fire_prop, location) %>%
-#   pivot_wider(
-#     names_prefix = "fire_age",
-#     names_from = fire_age,  # Create a column for each land cover type
-#     values_from = fire_prop,  # Take values from the 'land_cover_prop' column
-#     values_fill = list(fire_prop = 0)  # Fill missing values with 0 (no land cover)
-  #)
-
-# fire_variables <- fire_buffer_proportion %>%
-#   # Ensure that fire_age is numeric
-#   mutate(fire_age = as.numeric(fire_age)) %>%
-#   mutate(
-#     fire_presence_or_absence = case_when(
-#       fire_age == 4 ~ 0,  # For values 4, assign 0 (absence)
-#       fire_age %in% 0:3 ~ 1  # For values 0 to 3, assign 1 (presence)
-#     )
-#   ) %>%
-#   dplyr::select(fire_age, fire_prop, location) %>%
-#   pivot_wider(
-#     names_prefix = "fire_age",
-#     names_from = fire_age,  # Create a column for each fire age
-#     values_from = fire_prop,  # Take values from the 'fire_prop' column
-#     values_fill = list(fire_prop = 0)  # Fill missing values with 0 (no fire proportion)
-#   )
-
-
 # Reorder columns based on the numbers in their names
 fire_variables <- fire_variables %>%
   dplyr::select(order(-as.numeric(sub("fire_age", "", names(.)))))  # Extract numbers and reorder columns
@@ -141,6 +104,11 @@ fire_variables <- fire_variables %>%
 # Move the 'location' column to the very left
 fire_variables <- fire_variables %>%
   dplyr::select(location, everything())
+
+adding_variables_elevations_eskers <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
+                                            camera_locations_df[, c("location", "elevations", "esker_camera_distances")], 
+                                            by = "location", 
+                                            all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
 
 # Merge the datasets by 'location'
 all_variables <- fire_variables %>%
@@ -183,34 +151,6 @@ monthly_summary_all_variables <- all_variables_month %>%
 
 write_csv(all_variables, "all_variables.csv")
 
-#write_xlsx(comb_overlap_SCANFI_and_selected_mammals_week, "comb_overlap_SCANFI_and_selected_mammals_week.xlsx")
-
-####### christine playing around with fire data. trying to add tdn_boundary and camera locations to fire_rast
-
-# Convert boundary and camera locations to sf objects if they aren't already
-#TDN_boundary <- st_as_sf(TDN_boundary) %>%
-#sf::st_transform(4326)
-
-# camera_locations_sf <- st_as_sf(camera_locations) %>%
-# sf::st_transform(4326)
-# 
-# # Convert raster to a data frame for ggplot
-# fire_rast_df <- as.data.frame(fire_rast, xy = TRUE, na.rm = TRUE)
-# 
-# fire_buffer_proportion <- fire_buffer_proportion %>%
-#   mutate(recent_fire = 
-#            ifelse(YEAR >= 2022 - 20, 1,
-#                   0)) 
-
-#adding more age classes to "recent_fire" column
-#fire_buffer_proportion <- fire_buffer_proportion %>%
-  # mutate(recent_fire = case_when(
-  #   YEAR >= 2022 - 10 ~ 0,  # 0-10 year old fires
-  #   YEAR >= 2022 - 20 & YEAR < 2022 - 10 ~ 1,  # 11-20 year old fires
-  #   YEAR >= 2022 - 30 & YEAR < 2022 - 20 ~ 2,  # 21-30 year old fires
-  #   YEAR < 2022 - 30 ~ 3,  # > 30 year old fires
-  #   TRUE ~ NaN  # Assign NaN for any cases that don't match
-  # ))
 
 
 # Assuming both datasets have a 'location' column, we'll join by that column
