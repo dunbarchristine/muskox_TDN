@@ -1,6 +1,6 @@
 
-
-
+library(ggcorrplot)
+library(corrplot)
 #checking data with protocols from zuur et al. 2010
 
 
@@ -49,9 +49,9 @@ model_variables |>
 
 
 #What are the relationships between Y and X variables?
-Z <- as.vector(as.matrix(model_variables[, c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "log_esker_camera_distances", "esker_camera_distances","fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "grizzly_per_day", "gray_wolf_per_day", "season")]))
-Y10 <- rep(model_variables$Muskox, 21)
-MyNames <- names(model_variables[,c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "grizzly_per_day", "gray_wolf_per_day", "season")])
+Z <- as.vector(as.matrix(model_variables[, c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "log_esker_camera_distances", "esker_camera_distances","fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "season")]))
+Y10 <- rep(model_variables$Muskox, 19)
+MyNames <- names(model_variables[,c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "season")])
 ID10 <- rep(MyNames, each = length(model_variables$Muskox))
 tibble(response = Y10, vars = Z, varnames = ID10) %>%
   ggplot(aes(x = vars, y = response)) +
@@ -76,7 +76,15 @@ all_variables %>%
 #running a correlation test with dataset "variables_only". This dataset includes just the variables I will be using in my models, not including location, camera cluster, year, week, etc.
 
 # Compute the correlation matrix for all numeric variables in 'variables_only'
-#cor_matrix <- cor(all_variables_with_tri_and_species, use = "complete.obs") #complete.obs ensures that only complete cases (rows with no missing values) are used to compute the correlation.
+cor_matrix <- cor(model_variables, use = "complete.obs") #complete.obs ensures that only complete cases (rows with no missing values) are used to compute the correlation.
 
+# Select only numeric columns
+numeric_data <- model_variables %>% select(where(is.numeric))
+
+# Compute correlation matrix
+cor_matrix <- cor(numeric_data, use = "complete.obs")
+
+# Basic plot
+corrplot(cor_matrix, method = "circle")
 
 
