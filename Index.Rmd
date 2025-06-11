@@ -1,5 +1,5 @@
 ---
-title: "Index"
+title: "index"
 author: "Christine Dunbar"
 date: "2025-06-11"
 output: html_document
@@ -23,7 +23,8 @@ library(corrplot)
 ```
 
 ## Read in variables
-
+ 
+ 
 
 
 ```{r variables, echo=TRUE}
