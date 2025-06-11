@@ -1,0 +1,94 @@
+---
+title: "index"
+author: "Christine Dunbar"
+date: "2025-06-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Zuur Protocols
+
+We are going to go through the Zuur protocols (2010). 
+First step is to load libraries.
+
+```{r libraries}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(ggcorrplot)
+library(corrplot)
+```
+
+## Read in variables
+ 
+```{r variables, echo=TRUE}
+model_variables <- readRDS("~/Desktop/Analysis/Learning/learning/RDS files/model_variables.rds")
+```
+
+## Outliers
+
+Looking for explanatory outliers 
+
+```{r outliers, echo=TRUE}
+model_variables |> 
+  mutate(log_esker_camera_distances = as.numeric(esker_camera_distances)) %>%
+  dplyr::select(c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "grizzly_per_day", "gray_wolf_per_day")) %>%
+  pivot_longer(cols = c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "grizzly_per_day", "gray_wolf_per_day")) |> 
+  ggplot() +
+  geom_point(aes(x = value, y = rep(1:nrow(model_variables), each = n_distinct(name)))) +
+  #geom_point(aes(x = value, y = name)) +
+  facet_wrap(~ name, scales = "free") +
+  labs(x = "Value of the variable",
+       y = "Order of the data") +
+  theme_bw()
+
+
+model_variables |> 
+  #mutate(distance_to_esker_m = as.numeric(distance_to_esker_m)) %>%
+  dplyr::select(c(Muskox)) %>%
+  pivot_longer(cols = c(Muskox)) |> 
+  ggplot() +
+  geom_point(aes(x = value, y = rep(1:nrow(model_variables), each = 1))) +
+  facet_wrap(~ name, scales = "free") +
+  labs(x = "Value of the variable",
+       y = "Order of the data") +
+  theme_bw()
+```
+## Testing homogeneity for variance
+
+```{r homogenity, echo=TRUE}
+model_variables |> 
+  ggplot() +
+  geom_boxplot(aes(y = Muskox, x = cluster)) +
+  theme_bw()
+```
+
+## What are the relationships between Y and X variables?
+
+```{r relationships, echo=TRUE}
+Z <- as.vector(as.matrix(model_variables[, c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "log_esker_camera_distances", "esker_camera_distances","fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "season")]))
+Y10 <- rep(model_variables$Muskox, 19)
+MyNames <- names(model_variables[,c("Treed_broadleaf", "Treed_conifer", "Treed_mixed", "Bryoid", "Shrub", "Water", "Herbs", "gray_wolf", "grizzly_bear", "Arctic_DEM_500m_elevation_m", "esker_camera_distances", "log_esker_camera_distances", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", "TRI_extracted", "season")])
+ID10 <- rep(MyNames, each = length(model_variables$Muskox))
+tibble(response = Y10, vars = Z, varnames = ID10) %>%
+  ggplot(aes(x = vars, y = response)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  facet_wrap(~varnames, scales = "free")
+```
+## correlation matrix
+
+Compute the correlation matrix for all numeric variables in 'model_variables'
+
+```{r correlation, echo=TRUE}
+# Select only numeric columns
+numeric_data <- model_variables %>% select(where(is.numeric))
+
+# Compute correlation matrix
+cor_matrix <- cor(numeric_data, use = "complete.obs")
+
+# Basic plot
+corrplot(cor_matrix, method = "color")    
