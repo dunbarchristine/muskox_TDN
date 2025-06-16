@@ -85,6 +85,6 @@ numeric_data <- model_variables %>% select(where(is.numeric))
 cor_matrix <- cor(numeric_data, use = "complete.obs")
 
 # Basic plot
-corrplot(cor_matrix, method = "circle")
+corrplot(cor_matrix, method = "color")
 
 

@@ -100,7 +100,7 @@ model_variables <- model_variables %>%
   )
 
 
-
+write.csv(model_variables, file = "~/Desktop/Analysis/Learning/CSV Files/model_variables.csv")
 
 
 
