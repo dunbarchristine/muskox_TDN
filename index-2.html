@@ -606,6 +606,144 @@ mod_global_win_5 &lt;- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_c
                               offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Winter&quot;)) #this model will run with both cluster/location, and just with cluster/ just with location.</code></pre>
 <pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
 ## problem; non-positive-definite Hessian matrix. See vignette(&#39;troubleshooting&#39;)</code></pre>
+</div>
+<div id="global-summer-shrubs-model-with-no-trees" class="section level2">
+<h2>global summer shrubs model with no trees</h2>
+<p>making a global model with shrubs, no trees. because of high
+collinearity</p>
+<pre class="r"><code>mod_global_sum_shrub &lt;- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) 
+
+summary(mod_global_sum_shrub)</code></pre>
+<pre><code>##  Family: nbinom2  ( log )
+## Formula:          
+## Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) +  
+##     scale(fire_age3) + scale(fire_age0) + scale(fire_age2) +  
+##     scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) +  
+##     scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +  
+##     offset(log(n_days_effort)) + (1 | cluster)
+## Data: model_variables %&gt;% filter(season == &quot;Summer&quot;)
+## 
+##       AIC       BIC    logLik -2*log(L)  df.resid 
+##    4304.1    4401.3   -2138.1    4276.1      7587 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups  Name        Variance Std.Dev.
+##  cluster (Intercept) 0.5986   0.7737  
+## Number of obs: 7601, groups:  cluster, 60
+## 
+## Dispersion parameter for nbinom2 family (): 0.189 
+## 
+## Conditional model:
+##                                    Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept)                        -4.68642    0.11870  -39.48   &lt;2e-16 ***
+## scale(fire_age1)                    0.18235    0.10433    1.75   0.0805 .  
+## scale(log_esker_camera_distances)   0.02081    0.12647    0.16   0.8693    
+## scale(fire_age3)                   -0.02034    0.10772   -0.19   0.8502    
+## scale(fire_age0)                   -0.08631    0.11847   -0.73   0.4663    
+## scale(fire_age2)                   -0.17894    0.14570   -1.23   0.2194    
+## scale(Shrub)                       -0.26385    0.13418   -1.97   0.0492 *  
+## scale(Groundcover)                 -0.05896    0.10244   -0.58   0.5649    
+## scale(Predators)                    0.09830    0.04008    2.45   0.0142 *  
+## scale(Water)                       -0.02805    0.06466   -0.43   0.6645    
+## scale(TRI_extracted)               -0.26821    0.12791   -2.10   0.0360 *  
+## scale(Arctic_DEM_500m_elevation_m) -0.19164    0.14090   -1.36   0.1738    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+</div>
+<div id="global-summer-trees-model-with-no-shrubs" class="section level2">
+<h2>global summer trees model with no shrubs</h2>
+<p>making a global model with trees, no shrubs. because of high
+collinearity</p>
+<pre class="r"><code>mod_global_sum_trees &lt;- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Trees) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                  offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) 
+
+summary(mod_global_sum_trees)</code></pre>
+<pre><code>##  Family: nbinom2  ( log )
+## Formula:          
+## Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) +  
+##     scale(fire_age3) + scale(fire_age0) + scale(fire_age2) +  
+##     scale(Trees) + scale(Groundcover) + scale(Predators) + scale(Water) +  
+##     scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +  
+##     offset(log(n_days_effort)) + (1 | cluster)
+## Data: model_variables %&gt;% filter(season == &quot;Summer&quot;)
+## 
+##       AIC       BIC    logLik -2*log(L)  df.resid 
+##    4304.1    4401.2   -2138.1    4276.1      7587 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups  Name        Variance Std.Dev.
+##  cluster (Intercept) 0.5984   0.7735  
+## Number of obs: 7601, groups:  cluster, 60
+## 
+## Dispersion parameter for nbinom2 family (): 0.189 
+## 
+## Conditional model:
+##                                    Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept)                        -4.68640    0.11868  -39.49   &lt;2e-16 ***
+## scale(fire_age1)                    0.18224    0.10431    1.75   0.0806 .  
+## scale(log_esker_camera_distances)   0.02086    0.12646    0.16   0.8690    
+## scale(fire_age3)                   -0.02028    0.10769   -0.19   0.8506    
+## scale(fire_age0)                   -0.08636    0.11845   -0.73   0.4660    
+## scale(fire_age2)                   -0.17899    0.14568   -1.23   0.2192    
+## scale(Trees)                        0.25724    0.13045    1.97   0.0486 *  
+## scale(Groundcover)                  0.06246    0.10329    0.60   0.5454    
+## scale(Predators)                    0.09830    0.04008    2.45   0.0142 *  
+## scale(Water)                        0.07967    0.06665    1.20   0.2319    
+## scale(TRI_extracted)               -0.26837    0.12791   -2.10   0.0359 *  
+## scale(Arctic_DEM_500m_elevation_m) -0.19152    0.14085   -1.36   0.1739    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+</div>
+<div id="looking-at-both-trees-and-shrubs." class="section level2">
+<h2>looking at both trees and shrubs.</h2>
+<p>just curious.</p>
+<pre class="r"><code>mod_global_sum_shrubs_trees &lt;- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Trees) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                         offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) 
+
+summary(mod_global_sum_shrubs_trees)</code></pre>
+<pre><code>##  Family: nbinom2  ( log )
+## Formula:          
+## Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) +  
+##     scale(fire_age3) + scale(fire_age0) + scale(fire_age2) +  
+##     scale(Trees) + scale(Shrub) + scale(Groundcover) + scale(Predators) +  
+##     scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +  
+##     offset(log(n_days_effort)) + (1 | cluster)
+## Data: model_variables %&gt;% filter(season == &quot;Summer&quot;)
+## 
+##       AIC       BIC    logLik -2*log(L)  df.resid 
+##    4305.5    4409.5   -2137.7    4275.5      7586 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups  Name        Variance Std.Dev.
+##  cluster (Intercept) 0.5906   0.7685  
+## Number of obs: 7601, groups:  cluster, 60
+## 
+## Dispersion parameter for nbinom2 family (): 0.189 
+## 
+## Conditional model:
+##                                     Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept)                        -4.686267   0.118134  -39.67   &lt;2e-16 ***
+## scale(fire_age1)                    0.182408   0.103858    1.76   0.0790 .  
+## scale(log_esker_camera_distances)   0.025554   0.126390    0.20   0.8398    
+## scale(fire_age3)                   -0.006895   0.108596   -0.06   0.9494    
+## scale(fire_age0)                   -0.086544   0.117886   -0.73   0.4629    
+## scale(fire_age2)                   -0.173414   0.145208   -1.19   0.2324    
+## scale(Trees)                       19.470244  25.626096    0.76   0.4474    
+## scale(Shrub)                       19.757233  26.350283    0.75   0.4534    
+## scale(Groundcover)                  9.141914  12.110536    0.75   0.4503    
+## scale(Predators)                    0.098454   0.040092    2.46   0.0141 *  
+## scale(Water)                        8.135163  10.744393    0.76   0.4490    
+## scale(TRI_extracted)               -0.275821   0.128508   -2.15   0.0318 *  
+## scale(Arctic_DEM_500m_elevation_m) -0.202583   0.141073   -1.44   0.1510    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
 <pre class="r"><code>#calculating variance inflation factors (VIFs)
 performance::check_collinearity(mod_global_sum_shrub)</code></pre>
 <pre><code>## # Check for Multicollinearity
