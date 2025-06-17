@@ -155,16 +155,6 @@ mod_therm_sum_4.5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(`log_esker_ca
 
 
 
-#looking at cluster, location, cluster/location
-mod_global_sum_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age2) + scale(fire_age0) + scale(Shrub) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) +  scale(Arctic_DEM_500m_elevation_m) + 
-                                offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #location only. removed esker, fireage2 and bryoid because they were correlated with a few variables
-
-mod_global_sum_5.1 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Shrub) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #cluster/location. removed esker, fireage2 and bryoid because they were correlated with a few variables
-
-mod_global_sum_5.2 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Shrub) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #cluster only. removed esker, fireage2 and bryoid because they were correlated with a few variables
-
 #running global summer model with shrub and not trees 
 mod_global_sum_shrub <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
                                 offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
@@ -176,6 +166,7 @@ mod_global_sum_trees <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_came
 mod_global_sum_shrubs_trees <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Trees) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
                                          offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
 
+#### trouble shooting cluster/location for summer models ####
 #cluster/location. trying to see if shrub and treed conifer estimates are high
 mod_therm_sum_5.3 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(`Treed_broadleaf`)+ scale(`Treed_conifer`)+ scale(Water) + scale(Herbs)+ scale(Shrub) + scale(Bryoid) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
                                offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #just habitat variables
@@ -188,7 +179,15 @@ mod_therm_sum_5.4 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(`Treed_broadl
 mod_therm_sum_5.5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(`Treed_broadleaf`)+ scale(`Treed_conifer`)+ scale(Water) + scale(Herbs)+ scale(Shrub) + scale(Bryoid) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) + 
                                offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #just habitat variables
 
+#looking at cluster, location, cluster/location
+mod_global_sum_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age2) + scale(fire_age0) + scale(Shrub) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) +  scale(Arctic_DEM_500m_elevation_m) + 
+                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #location only. removed esker, fireage2 and bryoid because they were correlated with a few variables
 
+mod_global_sum_5.1 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Shrub) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #cluster/location. removed esker, fireage2 and bryoid because they were correlated with a few variables
+
+mod_global_sum_5.2 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Shrub) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #cluster only. removed esker, fireage2 and bryoid because they were correlated with a few variables
 
 
 
@@ -263,7 +262,7 @@ mod_global_win_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_came
 
 
 
-##### model selection ###########
+#### model selection ###########
 
 ##model selection for global models
 fmListGlobal<-model.sel(mod_null_all_1=mod_null_all_1, mod_pred_all_2=mod_pred_all_2, mod_pred_all_2.1=mod_pred_all_2.1,mod_pred_all_2.2=mod_pred_all_2.2, mod_food_all_3=mod_food_all_3, mod_food_all_3.1=mod_food_all_3.1, mod_food_all_3.2=mod_food_all_3.2, mod_food_all_3.3=mod_food_all_3.3, mod_food_all_3.4=mod_food_all_3.4, mod_food_all_3.5=mod_food_all_3.5, mod_food_all_3.6=mod_food_all_3.6, mod_food_all_3.7=mod_food_all_3.7, mod_food_all_3.8=mod_food_all_3.8, mod_food_all_3.9=mod_food_all_3.9,
@@ -293,7 +292,7 @@ summer_modelav <-model.avg(summer_top_models)
 summary(summer_modelav)
 
 
-####### dredging ########
+#### dredging ####
 
 #annual dredge model
 model_annual <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) +  
@@ -316,9 +315,11 @@ model_global_win_5 <- glmmTMB(Muskox ~ scale(fire_age1) + scale(Shrub) + scale(H
 winter_dredge <- dredge(model_global_win_5, fixed = ~cond(offset(log(n_days_effort))) + (1|cluster)) #not running, lots of convergence issues: "Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting') 2: In finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old) :"
 
 
-
-performance::check_collinearity(model_global_all_5)
-
+#calculating variance inflation factors (VIFs)
+performance::check_collinearity(mod_global_sum_shrub)
+performance::check_collinearity(mod_global_sum_trees)
+performance::check_collinearity(mod_global_sum_shrubs_trees)
+ 
 #adding bryoid and herbs together to create new variable called "groundcover"
 model_variables <- model_variables %>%
 mutate(Groundcover = Herbs + Bryoid)
