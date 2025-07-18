@@ -30,7 +30,7 @@ fire_data_nbac_crop <- fire_data_nbac %>%
   sf::st_transform(32612)
 
 saveRDS(fire_data_nbac_crop, saveRDS(fire_data_nbac_crop, "~/Desktop/Analysis/Learning/learning/RDS files/fire_data_nbac_crop.rds"))
-fire_data_nbac_crop <- readRDS("Processed_Data/fire_data_nbac_crop.rds")
+fire_data_nbac_crop <- readRDS("RDS files/fire_data_nbac_crop.rds")
 
 ### combine cropped fire data
 fire_data_subset <- fire_data_nbac_crop %>%
@@ -105,10 +105,29 @@ fire_variables <- fire_variables %>%
 fire_variables <- fire_variables %>%
   dplyr::select(location, everything())
 
-adding_variables_elevations_eskers <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
-                                            camera_locations_df[, c("location", "elevations", "esker_camera_distances")], 
+#adding missing variables 
+comb_overlap_SCANFI_and_selected_mammals_week <- merge(model_variables, 
+                                            camera_locations_df[, c("location", "Arctic_DEM_500m_elevation_m", "esker_camera_distances")], 
                                             by = "location", 
                                             all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
+
+camera_locations_df <- camera_locations_df %>%
+  left_join(
+    model_variables %>% select(location, esker_camera_distances, Arctic_DEM_500m_elevation_m),
+            by = "location"
+  )
+
+adding_variables_elevations_eskers <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
+                                            camera_locations_df[, c("location", "Arctic_DEM_500m_elevation_m", "esker_camera_distances")], 
+                                            by = "location", 
+                                            all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
+
+
+
+saveRDS(adding_variables_elevations_eskers,"~/Desktop/Analysis/Learning/learning/RDS files/adding_variables_elevations_eskers.rds") #this is where I have it saved on my desktop. This is to save the rds
+
+adding_variables_elevations_eskers <- readRDS("~/Desktop/Analysis/Learning/learning/RDS files/adding_variables_elevations_eskers.rds") #this code is to read the rds file you saved above
+
 
 # Merge the datasets by 'location'
 all_variables <- fire_variables %>%

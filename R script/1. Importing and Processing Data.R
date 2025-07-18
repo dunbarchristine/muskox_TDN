@@ -132,7 +132,7 @@ selected_mammals_week <- selected_mammals_week%>%
 
 TDN_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_Boundary.shp")
 
-tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/SpeciesRawData (Oct 31)/SPECIES_ALL_LIST.csv")
+tdn_raw_camera <- read.csv("~/Desktop/Analysis/Learning/learning/Raw Data/Species Raw Data (May 2025)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_main_report.csv")
 
 camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/Raw Data/SpeciesRawData (Oct 31)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
   drop_na("longitude") %>%
@@ -214,6 +214,10 @@ ecoregions_overlap <- as.data.frame(ecoregions_overlap)
 # Make a new column in cameras (if needed)
 model_variables <- model_variables %>% 
   left_join(ecoregions_overlap %>% select(location, ECO1_NAM_1, ECO2_NAM_1, ECO3_NAM_1, ECO4_NAM_1), by="location")
+
+
+
+
 
 #loading in nwt boundary 
 nwt_boundary <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/gpr_000a11a_e.shp")

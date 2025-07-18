@@ -8,6 +8,11 @@ library(MuMIn)
 library(corrplot)
 library(glmmTMB)
 library(performance)
+library(broom.mixed)
+library(stringr)
+library(flextable)    
+library(MASS)
+
 
 #making a model set 
 #using a negative binomal mixed effects model with camera cluster and camera ID as fixed effects
@@ -155,13 +160,50 @@ mod_therm_sum_4.5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(`log_esker_ca
 
 
 
-#running global summer model with shrub and not trees 
+#running global summer model with shrub and not trees. fire_age4 is giving NAs, deleted fire_age4 as it should be used as a reference
 mod_global_sum_shrub <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
                                 offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
 
-#running global summer model with trees and not shrubs
-mod_global_sum_trees <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Trees) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+#running global summer model with trees and not shrubs. fire_age2 is giving NAs. deleted fire_age4 as it should be used as a reference
+mod_global_sum_trees <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Predators) + scale(Groundcover) + scale(Trees) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
                                   offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+
+#running global summer model with shrub values subtracted from tree values. fire_age2 again giving NAs. deleted fire_age4 as it should be used as a reference
+mod_global_sum_trees_2 <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(tree_shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                  offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer" )%>% mutate(tree_shrub = Trees - Shrub)) 
+
+
+#looking at stepAIC. code from katerina
+
+step_shrub_both <- stepAIC(mod_global_sum_shrub, direction="both", trace = TRUE) 
+
+summary(mod_global_sum_shrub)
+AIC(mod_global_sum_shrub)
+
+
+
+#ecoregions########
+mod_global_sum_shrub_taiga <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                  offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer", ECO2_NAM_1 == "Taiga Shield")) 
+
+
+mod_global_sum_trees_taiga <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Trees) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                   offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer", ECO2_NAM_1 == "Taiga Shield")) 
+
+
+#running global summer model with trees and not shrubs
+mod_global_sum_trees_plains <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(Trees) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                  offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer", ECO2_NAM_1 == "Southern Arctic: Tundra Plains")) 
+
+
+mod_global_sum_shrubs_plains <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                   offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer", ECO2_NAM_1 == "Southern Arctic: Tundra Plains")) 
+
+
+
+
+
+
 
 mod_global_sum_shrubs_trees <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Trees) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
                                          offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
@@ -264,7 +306,7 @@ mod_global_win_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_came
 
 #### model selection ###########
 
-##model selection for global models
+##model selection for global models####
 fmListGlobal<-model.sel(mod_null_all_1=mod_null_all_1, mod_pred_all_2=mod_pred_all_2, mod_pred_all_2.1=mod_pred_all_2.1,mod_pred_all_2.2=mod_pred_all_2.2, mod_food_all_3=mod_food_all_3, mod_food_all_3.1=mod_food_all_3.1, mod_food_all_3.2=mod_food_all_3.2, mod_food_all_3.3=mod_food_all_3.3, mod_food_all_3.4=mod_food_all_3.4, mod_food_all_3.5=mod_food_all_3.5, mod_food_all_3.6=mod_food_all_3.6, mod_food_all_3.7=mod_food_all_3.7, mod_food_all_3.8=mod_food_all_3.8, mod_food_all_3.9=mod_food_all_3.9,
                      mod_food_all_3.10=mod_food_all_3.10, mod_therm_all_4=mod_therm_all_4, mod_therm_all_4.1=mod_therm_all_4.1,mod_therm_all_4.2=mod_therm_all_4.2, mod_therm_all_4.3=mod_therm_all_4.3, mod_therm_all_4.4=mod_therm_all_4.4, mod_therm_all_4.5=mod_therm_all_4.5, model_global_all_5=model_global_all_5)
 fmListGlobal
@@ -294,7 +336,7 @@ summary(summer_modelav)
 
 #### dredging ####
 
-#annual dredge model
+#annual dredge model####
 model_annual <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) +  
                           offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = data_summer, na.action = "na.fail")
 
@@ -331,4 +373,52 @@ model_variables <- model_variables %>%
 #adding all trees together to create new variable called "Trees"
 model_variables <- model_variables %>%
   mutate(Trees = Treed_conifer + Treed_mixed + Treed_broadleaf)
+
+#adding fire ages together to create new variables called Fire_0 (ages 0-20 yrs old)
+model_variables <- model_variables %>%
+  mutate(Fire_0 = fire_age0 + fire_age1)
+
+#adding fire ages together to create new variables called Fire_1 (21 - > 30 yrs old)
+model_variables <- model_variables %>%
+  mutate(Fire_1 = fire_age2 + fire_age3)
+
+### trying to make output tables 
+# Tidy the model results
+model_results <- tidy(mod_global_sum_shrub, effects = "fixed")
+
+#removing bracket from the variable intercept
+model_results <- model_results %>%
+  mutate(
+    term = ifelse(term == "(Intercept)", "Intercept", term)
+  )
+
+#capitalizing all variable names
+model_results <- model_results %>%
+  mutate(
+    term = gsub("scale\\((.*?)\\)", "\\1", term, ignore.case = TRUE),  # Remove any case of scale()
+    term = str_replace_all(term, "_", " "),
+    term = str_to_title(term)
+  )
+
+#alphabetizing variables 
+model_results <- model_results %>%
+  mutate(term = ifelse(term == "(Intercept)", "Intercept", term)) %>%
+  mutate(is_intercept = term == "Intercept") %>%
+  arrange(desc(is_intercept), term) %>%   # Intercept first, then alphabetize
+  select(-is_intercept)
+
+
+#renaming TRI Extracted
+model_results <- model_results %>%
+  mutate(term = ifelse(term == "Tri Extracted", "TRI Extracted", term))
+
+# Format table
+flextable_model <- model_results %>%
+  dplyr::mutate(term = gsub("scale\\(|\\)", "", term)) %>%  # Clean term names
+  flextable() %>%
+  autofit()
+
+# View in RStudio
+flextable_model
+
 

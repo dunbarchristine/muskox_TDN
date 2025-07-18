@@ -19,7 +19,7 @@ overlap_SCANFI_cameras_table_variables_only <- overlap_SCANFI_cameras_table[, -1
 overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
   dplyr::select(-n) %>%  
   pivot_wider(
-    names_from = SCANFI_att_nfiLandCover_SW_2020_v1.2,  # Create a column for each land cover type
+    names_from = cover,  # Create a column for each land cover type
     values_from = landcover_prop,  # Take values from the 'land_cover_prop' column
     values_fill = list(landcover_prop = 0)  # Fill missing values with 0 (no land cover)
   )
@@ -37,8 +37,10 @@ overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
     Water = `8`
   )
 
-
-
+# Extract values for each camera location (this came from line 56 in landcover)
+elevations <- raster::extract(ArcticDEM_cropped, camera_locations)
+esker_camera_distances <- terra::extract(esker_dist, camera_locations)
+TRI_extracted <- raster::extract(TDN_tri_arctic, camera_locations)
 
 
 #combining overlap_SCANFI_cameras_table and selected_mammals_week to become one dataset called
