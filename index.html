@@ -11,7 +11,7 @@
 
 <meta name="author" content="Christine Dunbar" />
 
-<meta name="date" content="2025-06-26" />
+<meta name="date" content="2025-07-24" />
 
 <title>index</title>
 
@@ -352,62 +352,556 @@ display: none;
 
 <h1 class="title toc-ignore">index</h1>
 <h4 class="author">Christine Dunbar</h4>
-<h4 class="date">2025-06-26</h4>
+<h4 class="date">2025-07-24</h4>
 
 </div>
 
 
-<div id="packages" class="section level2">
-<h2>Packages</h2>
+<div id="looking-at-different-model-selection-methods-and-trying-to-determine-which-will-work-best-for-my-thesis." class="section level2">
+<h2>Looking at different model selection methods and trying to determine
+which will work best for my thesis.</h2>
+</div>
+<div id="i-will-be-looking-at-four-different-model-selection-methods-in-this-document-stepaic-the-hypothesis-driven-approach-dredging-and-model-averaging.-i-chose-these-methods-as-they-have-been-brought-up-in-past-conversations-with-lab-mates-advisors-and-in-articles-that-have-performed-similar-research.-i-wanted-to-explore-these-different-methods-to-help-me-get-a-better-understanding-of-how-each-one-works-and-how-they-differ-from-one-another.-i-also-think-it-helps-me-overall-understand-my-data-better." class="section level1">
+<h1>I will be looking at four different model selection methods in this
+document: StepAIC, the hypothesis driven approach, dredging and model
+averaging. I chose these methods as they have been brought up in past
+conversations with lab mates, advisors, and in articles that have
+performed similar research. I wanted to explore these different methods
+to help me get a better understanding of how each one works, and how
+they differ from one another. I also think it helps me overall
+understand my data better.</h1>
+<p>##Packages</p>
 <p>Load in packages.</p>
-<pre class="r"><code>library(vcd)</code></pre>
-<pre><code>## Loading required package: grid</code></pre>
-<pre class="r"><code>library(lme4)</code></pre>
-<pre><code>## Loading required package: Matrix</code></pre>
-<pre class="r"><code>library(MuMIn)
-library(corrplot)</code></pre>
-<pre><code>## corrplot 0.95 loaded</code></pre>
-<pre class="r"><code>library(glmmTMB)
-library(performance)
-library(dplyr)</code></pre>
-<pre><code>## 
-## Attaching package: &#39;dplyr&#39;</code></pre>
-<pre><code>## The following objects are masked from &#39;package:stats&#39;:
-## 
-##     filter, lag</code></pre>
-<pre><code>## The following objects are masked from &#39;package:base&#39;:
-## 
-##     intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>library(sf)</code></pre>
-<pre><code>## Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE</code></pre>
-</div>
 <div id="dataset" class="section level2">
 <h2>Dataset</h2>
-<p>Loading in dataset called “model_variables. Rmd won’t save this
-dataset because it has a geometry column, so for this rmd I will remove
-that column.</p>
+<p>Load in my dataset called model_variables.</p>
 <pre class="r"><code>model_variables &lt;- readRDS(&quot;~/Desktop/Analysis/Learning/learning/RDS files/model_variables.rds&quot;)
 
 model_variables_filtered &lt;- model_variables %&gt;%
   filter(season == &quot;Summer&quot;) %&gt;%
   st_drop_geometry()</code></pre>
 </div>
-<div id="model-1-global-summer-model-with-shrubs" class="section level2">
-<h2>Model 1: Global summer model with shrubs</h2>
-<p>This global summer model has shrubs but trees were excluded, because
-of the high collinearity. All other landcover and predator variables are
-included in this model.</p>
-<pre class="r"><code>mod_global_sum_shrub &lt;- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(fire_age4) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
-                                offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) </code></pre>
-<pre><code>## dropping columns from rank-deficient conditional model: scale(fire_age4)</code></pre>
-<pre class="r"><code>summary(mod_global_sum_shrub)</code></pre>
+<div id="stepaic" class="section level2">
+<h2>StepAIC</h2>
+<p>Lets look at using StepAIC on my global summer models.</p>
+<p>Pros to using StepAIC: - Minimizes model complexity - Enhance model
+performance by removing irrelevant variables - Appropriate to make a
+predictive model/estimating distribution</p>
+<p>Cons to using StepAIC: - “By passing the hard thinking” - No theory
+underlying the approach - Sensitive to the order of variable entry and
+removal - Can create biased estimates, standard errors, inflated
+p-value, and confidence intervals - This method does not work well with
+the glmmTMB package, which is what I am using. I tried to use the glm.nb
+package for my models but I was getting convergence errors, and when I
+switched to the glmmTMB package, all my models ran.</p>
+<pre class="r"><code>#scaling the variables. I had the scale function in front of each variable, but we tried this way to see if the stepAIC function would work. It wasnt working before when I had the scale in front of each variable. It still did not run when trying it this way
+
+model_data &lt;- model_variables %&gt;% filter(season == &quot;Summer&quot; )%&gt;% mutate(tree_shrub = Trees - Shrub)
+z_model_data &lt;- MuMIn::stdize(model_data) # standarized covariates
+
+#adding the scaled variables to dataset
+model_data &lt;- model_data %&gt;%
+  left_join(z_model_data)</code></pre>
+<pre><code>## Joining with `by = join_by(location, camera, cluster, geometry, season)`</code></pre>
+<pre><code>## Warning in left_join(., z_model_data): Detected an unexpected many-to-many relationship between `x` and `y`.
+## ℹ Row 1 of `x` matches multiple rows in `y`.
+## ℹ Row 1 of `y` matches multiple rows in `x`.
+## ℹ If a many-to-many relationship is expected, set `relationship =
+##   &quot;many-to-many&quot;` to silence this warning.</code></pre>
+<pre class="r"><code>#original model with all variables. fire_age2 was removed due to high collinearity with fire_age4
+mod_global_sum_trees_2 &lt;- buildglmmTMB(Muskox ~ z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 + scale(fire_age1) + scale(fire_age4) + scale(tree_shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                 (1|cluster) + offset(log(n_days_effort)), family=&quot;nbinom2&quot;, data = model_data, 
+                                 buildmerControl = buildmerControl(crit = &quot;AIC&quot;, direction = &quot;backward&quot;, calc.anova = TRUE, include = ~ (1|cluster) + offset(log(n_days_effort)))) </code></pre>
+<pre><code>## Fitting ML and REML reference models
+## Fitting via glmmTMB, with REML: Muskox ~ z.log_esker_camera_distances +
+##     z.fire_age3 + z.fire_age0 + scale(fire_age1) + scale(fire_age4) +
+##     scale(tree_shrub) + scale(Groundcover) + scale(Predators) +
+##     scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster) +
+##     offset(log(n_days_effort))
+## Fitting via glmmTMB, with ML: Muskox ~ z.log_esker_camera_distances +
+##     z.fire_age3 + z.fire_age0 + scale(fire_age1) + scale(fire_age4) +
+##     scale(tree_shrub) + scale(Groundcover) + scale(Predators) +
+##     scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster) +
+##     offset(log(n_days_effort))
+## Testing terms
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.fire_age3 + z.fire_age0 + scale(fire_age1) + scale(fire_age4) +
+##     scale(tree_shrub) + scale(Groundcover) + scale(Predators) +
+##     scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age0 + scale(fire_age1) +
+##     scale(fire_age4) + scale(tree_shrub) + scale(Groundcover) +
+##     scale(Predators) + scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + scale(fire_age1) +
+##     scale(fire_age4) + scale(tree_shrub) + scale(Groundcover) +
+##     scale(Predators) + scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age4) + scale(tree_shrub) + scale(Groundcover) +
+##     scale(Predators) + scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(tree_shrub) + scale(Groundcover) +
+##     scale(Predators) + scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(Groundcover) +
+##     scale(Predators) + scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(tree_shrub) +
+##     scale(Predators) + scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(tree_shrub) +
+##     scale(Groundcover) + scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(tree_shrub) +
+##     scale(Groundcover) + scale(Predators) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(tree_shrub) +
+##     scale(Groundcover) + scale(Predators) + scale(Water) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(tree_shrub) +
+##     scale(Groundcover) + scale(Predators) + scale(Water) +
+##     scale(TRI_extracted) + (1 | cluster)</code></pre>
+<pre><code>##    grouping                               term
+## 1      &lt;NA&gt;         offset(log(n_days_effort))
+## 2      &lt;NA&gt;                                  1
+## 3      &lt;NA&gt;       z.log_esker_camera_distances
+## 4      &lt;NA&gt;                        z.fire_age3
+## 5      &lt;NA&gt;                        z.fire_age0
+## 6      &lt;NA&gt;                   scale(fire_age1)
+## 7      &lt;NA&gt;                   scale(fire_age4)
+## 8      &lt;NA&gt;                  scale(tree_shrub)
+## 9      &lt;NA&gt;                 scale(Groundcover)
+## 10     &lt;NA&gt;                   scale(Predators)
+## 11     &lt;NA&gt;                       scale(Water)
+## 12     &lt;NA&gt;               scale(TRI_extracted)
+## 13     &lt;NA&gt; scale(Arctic_DEM_500m_elevation_m)
+## 14  cluster                                  1
+##                                       block Iteration          AIC
+## 1          NA NA offset(log(n_days_effort))         1           NA
+## 2                                   NA NA 1         1           NA
+## 3        NA NA z.log_esker_camera_distances         1          NaN
+## 4                         NA NA z.fire_age3         1          NaN
+## 5                         NA NA z.fire_age0         1  -51.5869826
+## 6                    NA NA scale(fire_age1)         1 -237.2345256
+## 7                    NA NA scale(fire_age4)         1          NaN
+## 8                   NA NA scale(tree_shrub)         1    1.5764673
+## 9                  NA NA scale(Groundcover)         1   -0.2264889
+## 10                   NA NA scale(Predators)         1  -78.9293294
+## 11                       NA NA scale(Water)         1   -7.9167196
+## 12               NA NA scale(TRI_extracted)         1  -41.9900736
+## 13 NA NA scale(Arctic_DEM_500m_elevation_m)         1  -38.8744612
+## 14                             NA cluster 1         1           NA</code></pre>
+<pre><code>## Updating formula: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(Groundcover) +
+##     scale(Predators) + scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting ML and REML reference models
+## Fitting via glmmTMB, with REML: Muskox ~ offset(log(n_days_effort)) + 1
+##     + z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(Groundcover) +
+##     scale(Predators) + scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(Groundcover) +
+##     scale(Predators) + scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Testing terms
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.fire_age3 + z.fire_age0 + scale(fire_age1) + scale(fire_age4) +
+##     scale(Groundcover) + scale(Predators) + scale(Water) +
+##     scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) + (1 |
+##     cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age0 + scale(fire_age1) +
+##     scale(fire_age4) + scale(Groundcover) + scale(Predators) +
+##     scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + scale(fire_age1) +
+##     scale(fire_age4) + scale(Groundcover) + scale(Predators) +
+##     scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age4) + scale(Groundcover) + scale(Predators) +
+##     scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(Groundcover) + scale(Predators) +
+##     scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(Predators) +
+##     scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(Groundcover) +
+##     scale(Water) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(Groundcover) +
+##     scale(Predators) + scale(TRI_extracted) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(Groundcover) +
+##     scale(Predators) + scale(Water) +
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Fitting via glmmTMB, with ML: Muskox ~ offset(log(n_days_effort)) + 1 +
+##     z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 +
+##     scale(fire_age1) + scale(fire_age4) + scale(Groundcover) +
+##     scale(Predators) + scale(Water) + scale(TRI_extracted) + (1 |
+##     cluster)</code></pre>
+<pre><code>##    grouping                               term
+## 1      &lt;NA&gt;         offset(log(n_days_effort))
+## 2      &lt;NA&gt;                                  1
+## 3      &lt;NA&gt;       z.log_esker_camera_distances
+## 4      &lt;NA&gt;                        z.fire_age3
+## 5      &lt;NA&gt;                        z.fire_age0
+## 6      &lt;NA&gt;                   scale(fire_age1)
+## 7      &lt;NA&gt;                   scale(fire_age4)
+## 9      &lt;NA&gt;                 scale(Groundcover)
+## 10     &lt;NA&gt;                   scale(Predators)
+## 11     &lt;NA&gt;                       scale(Water)
+## 12     &lt;NA&gt;               scale(TRI_extracted)
+## 13     &lt;NA&gt; scale(Arctic_DEM_500m_elevation_m)
+## 14  cluster                                  1
+##                                       block Iteration           AIC
+## 1          NA NA offset(log(n_days_effort))         2            NA
+## 2                                   NA NA 1         2            NA
+## 3        NA NA z.log_esker_camera_distances         2   -1.61545868
+## 4                         NA NA z.fire_age3         2           NaN
+## 5                         NA NA z.fire_age0         2  -51.23210135
+## 6                    NA NA scale(fire_age1)         2 -236.81278587
+## 7                    NA NA scale(fire_age4)         2 -299.74488525
+## 9                  NA NA scale(Groundcover)         2   -0.06744306
+## 10                   NA NA scale(Predators)         2  -79.60676855
+## 11                       NA NA scale(Water)         2   -8.59852864
+## 12               NA NA scale(TRI_extracted)         2  -41.75022253
+## 13 NA NA scale(Arctic_DEM_500m_elevation_m)         2           NaN
+## 14                             NA cluster 1         2            NA</code></pre>
+<pre><code>## All terms are significant</code></pre>
+<pre><code>## Error in try({ : ANOVA is not available for glmmTMB fits</code></pre>
+<pre class="r"><code>#check_collinearity(mod_global_sum_trees_2)
+mod_global_sum_trees_2@p$tab</code></pre>
+<pre><code>##    index grouping                               term
+## 1   &lt;NA&gt;     &lt;NA&gt;         offset(log(n_days_effort))
+## 2   &lt;NA&gt;     &lt;NA&gt;                                  1
+## 3   &lt;NA&gt;     &lt;NA&gt;       z.log_esker_camera_distances
+## 4   &lt;NA&gt;     &lt;NA&gt;                        z.fire_age3
+## 5   &lt;NA&gt;     &lt;NA&gt;                        z.fire_age0
+## 6   &lt;NA&gt;     &lt;NA&gt;                   scale(fire_age1)
+## 7   &lt;NA&gt;     &lt;NA&gt;                   scale(fire_age4)
+## 9   &lt;NA&gt;     &lt;NA&gt;                 scale(Groundcover)
+## 10  &lt;NA&gt;     &lt;NA&gt;                   scale(Predators)
+## 11  &lt;NA&gt;     &lt;NA&gt;                       scale(Water)
+## 12  &lt;NA&gt;     &lt;NA&gt;               scale(TRI_extracted)
+## 13  &lt;NA&gt;     &lt;NA&gt; scale(Arctic_DEM_500m_elevation_m)
+## 14  14 1  cluster                                  1
+##                                  code                                    block
+## 1          offset(log(n_days_effort))         NA NA offset(log(n_days_effort))
+## 2                                   1                                  NA NA 1
+## 3        z.log_esker_camera_distances       NA NA z.log_esker_camera_distances
+## 4                         z.fire_age3                        NA NA z.fire_age3
+## 5                         z.fire_age0                        NA NA z.fire_age0
+## 6                    scale(fire_age1)                   NA NA scale(fire_age1)
+## 7                    scale(fire_age4)                   NA NA scale(fire_age4)
+## 9                  scale(Groundcover)                 NA NA scale(Groundcover)
+## 10                   scale(Predators)                   NA NA scale(Predators)
+## 11                       scale(Water)                       NA NA scale(Water)
+## 12               scale(TRI_extracted)               NA NA scale(TRI_extracted)
+## 13 scale(Arctic_DEM_500m_elevation_m) NA NA scale(Arctic_DEM_500m_elevation_m)
+## 14                     14 1 cluster 1                             NA cluster 1
+##    Iteration           AIC
+## 1          2            NA
+## 2          2            NA
+## 3          2   -1.61545868
+## 4          2           NaN
+## 5          2  -51.23210135
+## 6          2 -236.81278587
+## 7          2 -299.74488525
+## 9          2   -0.06744306
+## 10         2  -79.60676855
+## 11         2   -8.59852864
+## 12         2  -41.75022253
+## 13         2           NaN
+## 14         2            NA</code></pre>
+<pre class="r"><code>summary(mod_global_sum_trees_2) #the summary table is saying the best fit model is all the variables except trees_shrubs. I have a hard time believing this. this makes me want to shift away from stepAIC and maybe look at the hypothesis driven approach more after trouble shooting with stepAIC for a while now.</code></pre>
 <pre><code>##  Family: nbinom2  ( log )
 ## Formula:          
-## Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) +  
-##     scale(fire_age3) + scale(fire_age0) + scale(fire_age2) +  
-##     scale(fire_age4) + scale(Shrub) + scale(Groundcover) + scale(Predators) +  
-##     scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +  
-##     offset(log(n_days_effort)) + (1 | cluster)
+## Muskox ~ offset(log(n_days_effort)) + 1 + z.log_esker_camera_distances +  
+##     z.fire_age3 + z.fire_age0 + scale(fire_age1) + scale(fire_age4) +  
+##     scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) +  
+##     scale(Arctic_DEM_500m_elevation_m) + (1 | cluster)
+## Data: model_data
+## 
+##       AIC       BIC    logLik -2*log(L)  df.resid 
+##  105118.4  105250.6  -52546.2  105092.4    191744 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups  Name        Variance Std.Dev.
+##  cluster (Intercept) 3.564    1.888   
+## Number of obs: 191757, groups:  cluster, 60
+## 
+## Dispersion parameter for nbinom2 family (): 0.213 
+## 
+## Conditional model:
+##                                     Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept)                        -4.934711   0.245473 -20.103  &lt; 2e-16 ***
+## z.log_esker_camera_distances       -0.083675   0.043548  -1.921  0.05468 .  
+## z.fire_age3                         0.498273   0.050368   9.893  &lt; 2e-16 ***
+## z.fire_age0                         0.761190   0.104777   7.265 3.73e-13 ***
+## scale(fire_age1)                    0.956941   0.065557  14.597  &lt; 2e-16 ***
+## scale(fire_age4)                    1.450310   0.087078  16.655  &lt; 2e-16 ***
+## scale(Groundcover)                  0.052318   0.036352   1.439  0.15009    
+## scale(Predators)                    0.069792   0.008024   8.698  &lt; 2e-16 ***
+## scale(Water)                       -0.046280   0.014146  -3.272  0.00107 ** 
+## scale(TRI_extracted)               -0.183269   0.028602  -6.407 1.48e-10 ***
+## scale(Arctic_DEM_500m_elevation_m) -0.636478   0.098596  -6.455 1.08e-10 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+</div>
+<div id="hypothesis-driven-approach" class="section level2">
+<h2>Hypothesis Driven Approach</h2>
+<p>Lets look at using the hypothesis driven approach on my global summer
+models.</p>
+<p>Pros: - Already put thought into what variables you should have, and
+what combinations there should be - Good for making inferences as to
+what matters to a species; driven by knowledge of their biology</p>
+<p>Cons: - Could be missing a combination of variables that is
+important</p>
+<pre class="r"><code>mod_null_all_1 &lt;- glmmTMB(Muskox ~ 1+ offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables  %&gt;% filter(season == &quot;Summer&quot;))
+
+#summer predation 
+mod_pred_sum_1 &lt;- glmmTMB(Muskox ~ scale(Predators) + offset(log(n_days_effort)) + (1|cluster),
+                          family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #both grizz and wolf
+
+#summer food
+mod_food_sum_3 &lt;- glmmTMB(Muskox ~ scale(Shrub) + scale(Groundcover) + scale(fire_age1) + scale(fire_age3) + scale(fire_age0) + scale(fire_age4) +
+                            offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) 
+
+mod_food_sum_3.1 &lt;- glmmTMB(Muskox ~ scale(Shrub) + 
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just shrub variable (estimate: -0.25)
+
+mod_food_sum_3.2 &lt;- glmmTMB(Muskox ~ scale(Groundcover) +
+                            offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just herbs variable (estimate: 0.078)
+
+mod_food_sum_3.3 &lt;- glmmTMB(Muskox ~ scale(fire_age1) +
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just fire_age1 variable (estimate: 0.2134)
+
+mod_food_sum_3.4 &lt;- glmmTMB(Muskox ~ scale(fire_age3) +
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just fire_age3 variable (estimate: 0.008601)
+
+mod_food_sum_3.5 &lt;- glmmTMB(Muskox ~ scale(fire_age0) +
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just fire_age0 variable (estimate: -0.04603)
+mod_food_sum_3.6 &lt;- glmmTMB(Muskox ~ scale(Shrub) + scale(Groundcover) +
+                               offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running just vegetation variables for food hypothesis to compare to just fire variables 
+
+mod_food_sum_3.7 &lt;- glmmTMB(Muskox ~ scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) +
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running just fire variables for food hypothesis
+
+
+#summer thermoregulation
+mod_therm_sum_4 &lt;- glmmTMB(Muskox ~ scale(Water) + scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) + scale(Arctic_DEM_500m_elevation_m) +
+                             offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #all variables I think support thermoregulation hypothesis
+
+mod_therm_sum_4.1 &lt;- glmmTMB(Muskox ~ scale(`Water`) +
+                               offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just water variable (estimate: 0.08528)
+
+mod_therm_sum_4.2 &lt;- glmmTMB(Muskox ~ scale(`log_esker_camera_distances`) +
+                               offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just log_esker_camera_distances variable (estimate: 0.01676)
+
+mod_therm_sum_4.3 &lt;- glmmTMB(Muskox ~ scale(TRI_extracted)+
+                               offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just water variable (estimate: 0.08528)
+
+mod_therm_sum_4.4 &lt;- glmmTMB(Muskox ~ scale(Arctic_DEM_500m_elevation_m) +
+                             offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #all variables I think support thermoregulation hypothesis
+
+mod_therm_sum_4.5 &lt;- glmmTMB(Muskox ~ scale(Water) + scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) + 
+                             offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #all variables I think support thermoregulation hypothesis
+
+
+mod_global_sum_shrub &lt;- glmmTMB(Muskox ~ scale(Water) + scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) + scale(Arctic_DEM_500m_elevation_m) + scale(Shrub) + scale(Groundcover) + scale(Predators) +
+                             offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;))
+
+fmListAll &lt;- model.sel(mod_null_all_1=mod_null_all_1, mod_pred_sum_1=mod_pred_sum_1, mod_food_sum_3=mod_food_sum_3, mod_food_sum_3.1=mod_food_sum_3.1, mod_food_sum_3.2=mod_food_sum_3.2, mod_food_sum_3.3=mod_food_sum_3.3, mod_food_sum_3.4=mod_food_sum_3.4, mod_food_sum_3.5=mod_food_sum_3.5, mod_food_sum_3.6=mod_food_sum_3.6, mod_food_sum_3.7=mod_food_sum_3.7, mod_therm_sum_4=mod_therm_sum_4, mod_therm_sum_4.1=mod_therm_sum_4.1,
+                     mod_therm_sum_4.2=mod_therm_sum_4.2, mod_therm_sum_4.3=mod_therm_sum_4.3, mod_therm_sum_4.4=mod_therm_sum_4.4,mod_therm_sum_4.5=mod_therm_sum_4.5,mod_global_sum_shrub=mod_global_sum_shrub)
+
+fmListAll  </code></pre>
+<pre><code>## Model selection table 
+##                      cnd((Int)) dsp((Int)) cnd(off(log(n_dys_eff)))
+## mod_pred_sum_1           -4.680          +                        +
+## mod_global_sum_shrub     -4.686          +                        +
+## mod_food_sum_3.1         -4.667          +                        +
+## mod_food_sum_3           -4.686          +                        +
+## mod_therm_sum_4.3        -4.690          +                        +
+## mod_therm_sum_4.5        -4.680          +                        +
+## mod_food_sum_3.3         -4.677          +                        +
+## mod_food_sum_3.6         -4.668          +                        +
+## mod_therm_sum_4          -4.688          +                        +
+## mod_therm_sum_4.1        -4.680          +                        +
+## mod_therm_sum_4.4        -4.668          +                        +
+## mod_null_all_1           -4.675          +                        +
+## mod_food_sum_3.7         -4.693          +                        +
+## mod_food_sum_3.5         -4.675          +                        +
+## mod_therm_sum_4.2        -4.674          +                        +
+## mod_food_sum_3.2         -4.675          +                        +
+## mod_food_sum_3.4         -4.675          +                        +
+##                      cnd(scl(Prd)) cnd(scl(fir_ag0)) cnd(scl(fir_ag1))
+## mod_pred_sum_1             0.10720                                    
+## mod_global_sum_shrub       0.09831          0.019030            0.2615
+## mod_food_sum_3.1                                                      
+## mod_food_sum_3                              0.074060            0.2896
+## mod_therm_sum_4.3                                                     
+## mod_therm_sum_4.5                                                     
+## mod_food_sum_3.3                                                0.2214
+## mod_food_sum_3.6                                                      
+## mod_therm_sum_4                             0.007021            0.2926
+## mod_therm_sum_4.1                                                     
+## mod_therm_sum_4.4                                                     
+## mod_null_all_1                                                        
+## mod_food_sum_3.7                            0.053900            0.3063
+## mod_food_sum_3.5                           -0.064640                  
+## mod_therm_sum_4.2                                                     
+## mod_food_sum_3.2                                                      
+## mod_food_sum_3.4                                                      
+##                      cnd(scl(fir_ag3)) cnd(scl(fir_ag4)) cnd(scl(Grn))
+## mod_pred_sum_1                                                        
+## mod_global_sum_shrub          0.066130            0.2104     -0.058950
+## mod_food_sum_3.1                                                      
+## mod_food_sum_3                0.083480            0.3429     -0.055310
+## mod_therm_sum_4.3                                                     
+## mod_therm_sum_4.5                                                     
+## mod_food_sum_3.3                                                      
+## mod_food_sum_3.6                                             -0.048850
+## mod_therm_sum_4               0.095270            0.1707              
+## mod_therm_sum_4.1                                                     
+## mod_therm_sum_4.4                                                     
+## mod_null_all_1                                                        
+## mod_food_sum_3.7              0.098420            0.2662              
+## mod_food_sum_3.5                                                      
+## mod_therm_sum_4.2                                                     
+## mod_food_sum_3.2                                              0.004968
+## mod_food_sum_3.4              0.002705                                
+##                      cnd(scl(Shr)) cnd(scl(Arc_DEM_500_elv_m))
+## mod_pred_sum_1                                                
+## mod_global_sum_shrub       -0.2638                     -0.1916
+## mod_food_sum_3.1           -0.2470                            
+## mod_food_sum_3             -0.3140                            
+## mod_therm_sum_4.3                                             
+## mod_therm_sum_4.5                                      -0.2629
+## mod_food_sum_3.3                                              
+## mod_food_sum_3.6           -0.2583                            
+## mod_therm_sum_4                                        -0.3025
+## mod_therm_sum_4.1                                             
+## mod_therm_sum_4.4                                      -0.1980
+## mod_null_all_1                                                
+## mod_food_sum_3.7                                              
+## mod_food_sum_3.5                                              
+## mod_therm_sum_4.2                                             
+## mod_food_sum_3.2                                              
+## mod_food_sum_3.4                                              
+##                      cnd(scl(log_esk_cmr_dst)) cnd(scl(TRI_ext)) cnd(scl(Wtr))
+## mod_pred_sum_1                                                                
+## mod_global_sum_shrub                   0.02082           -0.2682      -0.02805
+## mod_food_sum_3.1                                                              
+## mod_food_sum_3                                                                
+## mod_therm_sum_4.3                                        -0.2296              
+## mod_therm_sum_4.5                      0.03991           -0.2906       0.03998
+## mod_food_sum_3.3                                                              
+## mod_food_sum_3.6                                                              
+## mod_therm_sum_4                        0.04116           -0.2536       0.03268
+## mod_therm_sum_4.1                                                      0.09277
+## mod_therm_sum_4.4                                                             
+## mod_null_all_1                                                                
+## mod_food_sum_3.7                                                              
+## mod_food_sum_3.5                                                              
+## mod_therm_sum_4.2                      0.02398                                
+## mod_food_sum_3.2                                                              
+## mod_food_sum_3.4                                                              
+##                      df    logLik   AICc delta weight
+## mod_pred_sum_1        4 -2148.056 4304.1  0.00  0.285
+## mod_global_sum_shrub 14 -2138.075 4304.2  0.09  0.272
+## mod_food_sum_3.1      4 -2149.314 4306.6  2.52  0.081
+## mod_food_sum_3        9 -2144.446 4306.9  2.80  0.070
+## mod_therm_sum_4.3     4 -2149.746 4307.5  3.38  0.053
+## mod_therm_sum_4.5     7 -2146.772 4307.6  3.44  0.051
+## mod_food_sum_3.3      4 -2149.922 4307.9  3.73  0.044
+## mod_food_sum_3.6      5 -2149.199 4308.4  4.29  0.033
+## mod_therm_sum_4      11 -2143.409 4308.9  4.74  0.027
+## mod_therm_sum_4.1     4 -2150.741 4309.5  5.37  0.019
+## mod_therm_sum_4.4     4 -2150.766 4309.5  5.42  0.019
+## mod_null_all_1        3 -2152.083 4310.2  6.05  0.014
+## mod_food_sum_3.7      7 -2148.270 4310.6  6.44  0.011
+## mod_food_sum_3.5      4 -2151.953 4311.9  7.79  0.006
+## mod_therm_sum_4.2     4 -2152.060 4312.1  8.01  0.005
+## mod_food_sum_3.2      4 -2152.082 4312.2  8.05  0.005
+## mod_food_sum_3.4      4 -2152.082 4312.2  8.05  0.005
+## Models ranked by AICc(x) 
+## Random terms (all models): 
+##   cond(1 | cluster)</code></pre>
+<pre class="r"><code>#mod_pred_sum_1 is the best fitting model for the first hypothesis driven approach
+summary(mod_pred_sum_1)</code></pre>
+<pre><code>##  Family: nbinom2  ( log )
+## Formula:          
+## Muskox ~ scale(Predators) + offset(log(n_days_effort)) + (1 |      cluster)
+## Data: model_variables %&gt;% filter(season == &quot;Summer&quot;)
+## 
+##       AIC       BIC    logLik -2*log(L)  df.resid 
+##    4304.1    4331.9   -2148.1    4296.1      7597 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups  Name        Variance Std.Dev.
+##  cluster (Intercept) 0.7566   0.8698  
+## Number of obs: 7601, groups:  cluster, 60
+## 
+## Dispersion parameter for nbinom2 family (): 0.187 
+## 
+## Conditional model:
+##                  Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept)      -4.67971    0.12900  -36.28  &lt; 2e-16 ***
+## scale(Predators)  0.10718    0.04005    2.68  0.00745 ** 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>#global model is also competitive with top model for the first hypothesis driven approach
+summary(mod_global_sum_shrub)</code></pre>
+<pre><code>##  Family: nbinom2  ( log )
+## Formula:          
+## Muskox ~ scale(Water) + scale(log_esker_camera_distances) + scale(TRI_extracted) +  
+##     scale(fire_age1) + scale(fire_age4) + scale(fire_age3) +  
+##     scale(fire_age0) + scale(Arctic_DEM_500m_elevation_m) + scale(Shrub) +  
+##     scale(Groundcover) + scale(Predators) + offset(log(n_days_effort)) +  
+##     (1 | cluster)
 ## Data: model_variables %&gt;% filter(season == &quot;Summer&quot;)
 ## 
 ##       AIC       BIC    logLik -2*log(L)  df.resid 
@@ -425,134 +919,630 @@ included in this model.</p>
 ## Conditional model:
 ##                                    Estimate Std. Error z value Pr(&gt;|z|)    
 ## (Intercept)                        -4.68642    0.11870  -39.48   &lt;2e-16 ***
-## scale(fire_age1)                    0.18235    0.10433    1.75   0.0805 .  
-## scale(log_esker_camera_distances)   0.02081    0.12647    0.16   0.8693    
-## scale(fire_age3)                   -0.02034    0.10772   -0.19   0.8502    
-## scale(fire_age0)                   -0.08631    0.11847   -0.73   0.4663    
-## scale(fire_age2)                   -0.17894    0.14570   -1.23   0.2194    
-## scale(fire_age4)                         NA         NA      NA       NA    
-## scale(Shrub)                       -0.26385    0.13418   -1.97   0.0492 *  
-## scale(Groundcover)                 -0.05896    0.10244   -0.58   0.5649    
-## scale(Predators)                    0.09830    0.04008    2.45   0.0142 *  
-## scale(Water)                       -0.02805    0.06466   -0.43   0.6645    
-## scale(TRI_extracted)               -0.26821    0.12791   -2.10   0.0360 *  
+## scale(Water)                       -0.02805    0.06466   -0.43   0.6644    
+## scale(log_esker_camera_distances)   0.02082    0.12648    0.16   0.8692    
+## scale(TRI_extracted)               -0.26819    0.12791   -2.10   0.0360 *  
+## scale(fire_age1)                    0.26149    0.11280    2.32   0.0204 *  
+## scale(fire_age4)                    0.21038    0.17127    1.23   0.2193    
+## scale(fire_age3)                    0.06613    0.11349    0.58   0.5601    
+## scale(fire_age0)                    0.01903    0.13525    0.14   0.8881    
 ## scale(Arctic_DEM_500m_elevation_m) -0.19164    0.14090   -1.36   0.1738    
+## scale(Shrub)                       -0.26384    0.13418   -1.97   0.0493 *  
+## scale(Groundcover)                 -0.05895    0.10244   -0.58   0.5650    
+## scale(Predators)                    0.09831    0.04008    2.45   0.0142 *  
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
 </div>
-<div id="model-2-global-summer-model-with-trees" class="section level2">
-<h2>Model 2: Global summer model with trees</h2>
-<p>This global summer model has trees (combined broadleaf, mixed,
-conifer) but shrubs were excluded, because of the high collinearity. All
-other landcover and predator variables are included in this model.</p>
-<pre class="r"><code>mod_global_sum_trees &lt;- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(fire_age4) + scale(Trees) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
-                                  offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) </code></pre>
-<pre><code>## dropping columns from rank-deficient conditional model: scale(fire_age4)</code></pre>
-<pre class="r"><code>summary(mod_global_sum_trees)</code></pre>
+<div id="second-approach-to-hypothesis-driven-approach" class="section level2">
+<h2>Second Approach to Hypothesis Driven Approach</h2>
+</div>
+</div>
+<div id="trying-a-different-approach-to-the-hypothesis-driven-approach-different-hypotheses-predation-groundcover-fire-and-topography-models-instead-of-my-original-hypotheses-predation-food-and-thermoregulation.-im-looking-at-this-second-approach-because-my-original-models-shared-some-of-the-same-variables-like-fire-age.-both-my-food-and-thermoregulation-hypotheses-had-fire-ages-013-and-4.-so-for-this-second-approach-i-dont-want-any-of-the-same-variables-to-overlap-with-other-models.-i-think-this-will-help-me-better-understand-what-is-actually-causing-muskox-occurrence-in-tdn." class="section level1">
+<h1>Trying a different approach to the hypothesis driven approach,
+different hypotheses: predation, groundcover, fire and topography models
+instead of my original hypotheses: predation, food and thermoregulation.
+I’m looking at this second approach because my original models shared
+some of the same variables, like fire age. Both my food and
+thermoregulation hypotheses had fire ages 0,1,3, and 4. So for this
+second approach, I don’t want any of the same variables to overlap with
+other models. I think this will help me better understand what is
+actually causing muskox occurrence in TDN.</h1>
+<pre class="r"><code>mod2_null_sum_1 &lt;- glmmTMB(Muskox ~ 1+ offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables  %&gt;% filter(season == &quot;Summer&quot;))
+
+#summer predation 
+mod2_pred_sum_2 &lt;- glmmTMB(Muskox ~ scale(Predators) + offset(log(n_days_effort)) + (1|cluster),
+                          family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #both grizz and wolf
+
+#summer groundcover
+mod2_ground_sum_3 &lt;- glmmTMB(Muskox ~ scale(Shrub) + scale(Groundcover) + scale(Water) +
+                            offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;))
+
+mod2_ground_sum_3.1 &lt;- glmmTMB(Muskox ~ scale(Shrub) + 
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just shrub variable (estimate: -0.25)
+
+mod2_ground_sum_3.2 &lt;- glmmTMB(Muskox ~ scale(Groundcover) +
+                            offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just herbs variable (estimate: 0.078)
+
+mod2_ground_sum_3.3 &lt;- glmmTMB(Muskox ~ scale(Water) +
+                            offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just herbs variable (estimate: 0.078)
+
+#summer fire
+mod2_fire_sum_4 &lt;- glmmTMB(Muskox ~ scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) +
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running just fire variables for food hypothesis
+
+mod2_fire_sum_4.1 &lt;- glmmTMB(Muskox ~ scale(fire_age1) +
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just fire_age1 variable (estimate: 0.2134)
+
+mod2_fire_sum_4.2 &lt;- glmmTMB(Muskox ~ scale(fire_age3) +
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just fire_age3 variable (estimate: 0.008601)
+
+mod2_fire_sum_4.3 &lt;- glmmTMB(Muskox ~ scale(fire_age0) +
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just fire_age0 variable (estimate: -0.04603)
+
+mod2_fire_sum_4.4 &lt;- glmmTMB(Muskox ~ scale(fire_age4) +
+                              offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just fire_age0 variable (estimate: -0.04603)
+
+#summer topo
+mod2_topo_sum_5 &lt;- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                             offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #all variables I think support thermoregulation hypothesis
+
+mod2_topo_sum_5.1 &lt;- glmmTMB(Muskox ~ scale(log_esker_camera_distances) +
+                               offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just water variable (estimate: 0.08528)
+
+mod2_topo_sum_5.2 &lt;- glmmTMB(Muskox ~ scale(TRI_extracted) +
+                               offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just log_esker_camera_distances variable (estimate: 0.01676)
+
+mod2_topo_sum_5.3 &lt;- glmmTMB(Muskox ~ scale(Arctic_DEM_500m_elevation_m) +
+                               offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) #running model with just water variable (estimate: 0.08528)
+
+
+#global model
+mod2_global &lt;- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) + scale(Arctic_DEM_500m_elevation_m) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) +
+                             offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;))
+
+fmListAll2 &lt;- model.sel(mod2_null_sum_1=mod2_null_sum_1,mod2_pred_sum_2=mod2_pred_sum_2,mod2_ground_sum_3=mod2_ground_sum_3, mod2_ground_sum_3.1=mod2_ground_sum_3.1, mod2_ground_sum_3.2=mod2_ground_sum_3.2, mod2_ground_sum_3.3=mod2_ground_sum_3.3, mod2_fire_sum_4=mod2_fire_sum_4, mod2_fire_sum_4.1=mod2_fire_sum_4.1, mod2_fire_sum_4.2=mod2_fire_sum_4.2, mod2_fire_sum_4.3=mod2_fire_sum_4.3, mod2_fire_sum_4.4=mod2_fire_sum_4.4, mod2_topo_sum_5=mod2_topo_sum_5,mod2_topo_sum_5.1=mod2_topo_sum_5.1, mod2_topo_sum_5.2=mod2_topo_sum_5.2, mod2_topo_sum_5.3=mod2_topo_sum_5.3, mod2_global=mod2_global)
+
+fmListAll2  </code></pre>
+<pre><code>## Model selection table 
+##                     cnd((Int)) dsp((Int)) cnd(off(log(n_dys_eff)))
+## mod2_pred_sum_2         -4.680          +                        +
+## mod2_global             -4.686          +                        +
+## mod2_topo_sum_5         -4.678          +                        +
+## mod2_ground_sum_3.1     -4.667          +                        +
+## mod2_topo_sum_5.2       -4.690          +                        +
+## mod2_fire_sum_4.1       -4.677          +                        +
+## mod2_ground_sum_3.3     -4.680          +                        +
+## mod2_topo_sum_5.3       -4.668          +                        +
+## mod2_ground_sum_3       -4.672          +                        +
+## mod2_null_sum_1         -4.675          +                        +
+## mod2_fire_sum_4         -4.693          +                        +
+## mod2_fire_sum_4.4       -4.682          +                        +
+## mod2_fire_sum_4.3       -4.675          +                        +
+## mod2_topo_sum_5.1       -4.674          +                        +
+## mod2_ground_sum_3.2     -4.675          +                        +
+## mod2_fire_sum_4.2       -4.675          +                        +
+##                     cnd(scl(Prd)) cnd(scl(Grn)) cnd(scl(Shr)) cnd(scl(Wtr))
+## mod2_pred_sum_2           0.10720                                          
+## mod2_global               0.09831     -0.058950       -0.2638      -0.02805
+## mod2_topo_sum_5                                                            
+## mod2_ground_sum_3.1                                   -0.2470              
+## mod2_topo_sum_5.2                                                          
+## mod2_fire_sum_4.1                                                          
+## mod2_ground_sum_3.3                                                 0.09277
+## mod2_topo_sum_5.3                                                          
+## mod2_ground_sum_3                     -0.039740       -0.2270       0.05179
+## mod2_null_sum_1                                                            
+## mod2_fire_sum_4                                                            
+## mod2_fire_sum_4.4                                                          
+## mod2_fire_sum_4.3                                                          
+## mod2_topo_sum_5.1                                                          
+## mod2_ground_sum_3.2                    0.004968                            
+## mod2_fire_sum_4.2                                                          
+##                     cnd(scl(fir_ag0)) cnd(scl(fir_ag1)) cnd(scl(fir_ag3))
+## mod2_pred_sum_2                                                          
+## mod2_global                   0.01903            0.2615          0.066130
+## mod2_topo_sum_5                                                          
+## mod2_ground_sum_3.1                                                      
+## mod2_topo_sum_5.2                                                        
+## mod2_fire_sum_4.1                                0.2214                  
+## mod2_ground_sum_3.3                                                      
+## mod2_topo_sum_5.3                                                        
+## mod2_ground_sum_3                                                        
+## mod2_null_sum_1                                                          
+## mod2_fire_sum_4               0.05390            0.3063          0.098420
+## mod2_fire_sum_4.4                                                        
+## mod2_fire_sum_4.3            -0.06464                                    
+## mod2_topo_sum_5.1                                                        
+## mod2_ground_sum_3.2                                                      
+## mod2_fire_sum_4.2                                                0.002705
+##                     cnd(scl(fir_ag4)) cnd(scl(Arc_DEM_500_elv_m))
+## mod2_pred_sum_2                                                  
+## mod2_global                    0.2104                     -0.1916
+## mod2_topo_sum_5                                           -0.2841
+## mod2_ground_sum_3.1                                              
+## mod2_topo_sum_5.2                                                
+## mod2_fire_sum_4.1                                                
+## mod2_ground_sum_3.3                                              
+## mod2_topo_sum_5.3                                         -0.1980
+## mod2_ground_sum_3                                                
+## mod2_null_sum_1                                                  
+## mod2_fire_sum_4                0.2662                            
+## mod2_fire_sum_4.4              0.1125                            
+## mod2_fire_sum_4.3                                                
+## mod2_topo_sum_5.1                                                
+## mod2_ground_sum_3.2                                              
+## mod2_fire_sum_4.2                                                
+##                     cnd(scl(log_esk_cmr_dst)) cnd(scl(TRI_ext)) df    logLik
+## mod2_pred_sum_2                                                  4 -2148.056
+## mod2_global                           0.02082           -0.2682 14 -2138.075
+## mod2_topo_sum_5                       0.03908           -0.3118  6 -2146.998
+## mod2_ground_sum_3.1                                              4 -2149.314
+## mod2_topo_sum_5.2                                       -0.2296  4 -2149.746
+## mod2_fire_sum_4.1                                                4 -2149.922
+## mod2_ground_sum_3.3                                              4 -2150.741
+## mod2_topo_sum_5.3                                                4 -2150.766
+## mod2_ground_sum_3                                                6 -2148.815
+## mod2_null_sum_1                                                  3 -2152.083
+## mod2_fire_sum_4                                                  7 -2148.270
+## mod2_fire_sum_4.4                                                4 -2151.653
+## mod2_fire_sum_4.3                                                4 -2151.953
+## mod2_topo_sum_5.1                     0.02398                    4 -2152.060
+## mod2_ground_sum_3.2                                              4 -2152.082
+## mod2_fire_sum_4.2                                                4 -2152.082
+##                       AICc delta weight
+## mod2_pred_sum_2     4304.1  0.00  0.298
+## mod2_global         4304.2  0.09  0.285
+## mod2_topo_sum_5     4306.0  1.89  0.116
+## mod2_ground_sum_3.1 4306.6  2.52  0.085
+## mod2_topo_sum_5.2   4307.5  3.38  0.055
+## mod2_fire_sum_4.1   4307.9  3.73  0.046
+## mod2_ground_sum_3.3 4309.5  5.37  0.020
+## mod2_topo_sum_5.3   4309.5  5.42  0.020
+## mod2_ground_sum_3   4309.6  5.52  0.019
+## mod2_null_sum_1     4310.2  6.05  0.014
+## mod2_fire_sum_4     4310.6  6.44  0.012
+## mod2_fire_sum_4.4   4311.3  7.19  0.008
+## mod2_fire_sum_4.3   4311.9  7.79  0.006
+## mod2_topo_sum_5.1   4312.1  8.01  0.005
+## mod2_ground_sum_3.2 4312.2  8.05  0.005
+## mod2_fire_sum_4.2   4312.2  8.05  0.005
+## Models ranked by AICc(x) 
+## Random terms (all models): 
+##   cond(1 | cluster)</code></pre>
+<pre class="r"><code>#best fitting model for second hypothesis driven approach
+summary(mod2_global)</code></pre>
 <pre><code>##  Family: nbinom2  ( log )
 ## Formula:          
-## Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) +  
-##     scale(fire_age3) + scale(fire_age0) + scale(fire_age2) +  
-##     scale(fire_age4) + scale(Trees) + scale(Groundcover) + scale(Predators) +  
-##     scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +  
-##     offset(log(n_days_effort)) + (1 | cluster)
+## Muskox ~ scale(log_esker_camera_distances) + scale(TRI_extracted) +  
+##     scale(fire_age1) + scale(fire_age4) + scale(fire_age3) +  
+##     scale(fire_age0) + scale(Arctic_DEM_500m_elevation_m) + scale(Shrub) +  
+##     scale(Groundcover) + scale(Predators) + scale(Water) + offset(log(n_days_effort)) +  
+##     (1 | cluster)
 ## Data: model_variables %&gt;% filter(season == &quot;Summer&quot;)
 ## 
 ##       AIC       BIC    logLik -2*log(L)  df.resid 
-##    4304.1    4401.2   -2138.1    4276.1      7587 
+##    4304.1    4401.3   -2138.1    4276.1      7587 
 ## 
 ## Random effects:
 ## 
 ## Conditional model:
 ##  Groups  Name        Variance Std.Dev.
-##  cluster (Intercept) 0.5984   0.7735  
+##  cluster (Intercept) 0.5986   0.7737  
 ## Number of obs: 7601, groups:  cluster, 60
 ## 
 ## Dispersion parameter for nbinom2 family (): 0.189 
 ## 
 ## Conditional model:
 ##                                    Estimate Std. Error z value Pr(&gt;|z|)    
-## (Intercept)                        -4.68640    0.11868  -39.49   &lt;2e-16 ***
-## scale(fire_age1)                    0.18224    0.10431    1.75   0.0806 .  
-## scale(log_esker_camera_distances)   0.02086    0.12646    0.16   0.8690    
-## scale(fire_age3)                   -0.02028    0.10769   -0.19   0.8506    
-## scale(fire_age0)                   -0.08636    0.11845   -0.73   0.4660    
-## scale(fire_age2)                   -0.17899    0.14568   -1.23   0.2192    
-## scale(fire_age4)                         NA         NA      NA       NA    
-## scale(Trees)                        0.25724    0.13045    1.97   0.0486 *  
-## scale(Groundcover)                  0.06246    0.10329    0.60   0.5454    
-## scale(Predators)                    0.09830    0.04008    2.45   0.0142 *  
-## scale(Water)                        0.07967    0.06665    1.20   0.2319    
-## scale(TRI_extracted)               -0.26837    0.12791   -2.10   0.0359 *  
-## scale(Arctic_DEM_500m_elevation_m) -0.19152    0.14085   -1.36   0.1739    
+## (Intercept)                        -4.68642    0.11870  -39.48   &lt;2e-16 ***
+## scale(log_esker_camera_distances)   0.02082    0.12648    0.16   0.8692    
+## scale(TRI_extracted)               -0.26819    0.12791   -2.10   0.0360 *  
+## scale(fire_age1)                    0.26149    0.11280    2.32   0.0204 *  
+## scale(fire_age4)                    0.21038    0.17127    1.23   0.2193    
+## scale(fire_age3)                    0.06613    0.11349    0.58   0.5601    
+## scale(fire_age0)                    0.01903    0.13525    0.14   0.8881    
+## scale(Arctic_DEM_500m_elevation_m) -0.19164    0.14090   -1.36   0.1738    
+## scale(Shrub)                       -0.26384    0.13418   -1.97   0.0493 *  
+## scale(Groundcover)                 -0.05895    0.10244   -0.58   0.5650    
+## scale(Predators)                    0.09831    0.04008    2.45   0.0142 *  
+## scale(Water)                       -0.02805    0.06466   -0.43   0.6644    
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
-</div>
-<div id="model-3-global-summer-model-trees-shrub" class="section level2">
-<h2>Model 3: Global summer model trees-shrub</h2>
-<p>Brad mentioned in an email (June 12) the possibility of modeling the
-difference between variables. Brad and I met yesterday and tried this.
-We called this new variable “tree_shrub” and subtracted shrubs from
-trees.</p>
-<pre class="r"><code>mod_global_sum_trees_2 &lt;- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(fire_age4) + scale(tree_shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
-                                  offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot; )%&gt;% mutate(tree_shrub = Trees - Shrub)) </code></pre>
-<pre><code>## dropping columns from rank-deficient conditional model: scale(fire_age4)</code></pre>
-<pre class="r"><code>summary(mod_global_sum_trees_2)</code></pre>
+<pre class="r"><code>#pred model is also competitive with top model for second hypothesis driven approach
+summary(mod2_pred_sum_2)</code></pre>
 <pre><code>##  Family: nbinom2  ( log )
 ## Formula:          
-## Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) +  
-##     scale(fire_age3) + scale(fire_age0) + scale(fire_age2) +  
-##     scale(fire_age4) + scale(tree_shrub) + scale(Groundcover) +  
-##     scale(Predators) + scale(Water) + scale(TRI_extracted) +  
-##     scale(Arctic_DEM_500m_elevation_m) + offset(log(n_days_effort)) +  
-##     (1 | cluster)
-## Data: 
-## model_variables %&gt;% filter(season == &quot;Summer&quot;) %&gt;% mutate(tree_shrub = Trees -  
-##     Shrub)
+## Muskox ~ scale(Predators) + offset(log(n_days_effort)) + (1 |      cluster)
+## Data: model_variables %&gt;% filter(season == &quot;Summer&quot;)
 ## 
 ##       AIC       BIC    logLik -2*log(L)  df.resid 
-##    4304.1    4401.2   -2138.1    4276.1      7587 
+##    4304.1    4331.9   -2148.1    4296.1      7597 
 ## 
 ## Random effects:
 ## 
 ## Conditional model:
 ##  Groups  Name        Variance Std.Dev.
-##  cluster (Intercept) 0.5985   0.7736  
+##  cluster (Intercept) 0.7566   0.8698  
 ## Number of obs: 7601, groups:  cluster, 60
 ## 
-## Dispersion parameter for nbinom2 family (): 0.189 
+## Dispersion parameter for nbinom2 family (): 0.187 
 ## 
 ## Conditional model:
-##                                     Estimate Std. Error z value Pr(&gt;|z|)    
-## (Intercept)                        -4.686409   0.118692  -39.48   &lt;2e-16 ***
-## scale(fire_age1)                    0.182289   0.104319    1.75   0.0806 .  
-## scale(log_esker_camera_distances)   0.020843   0.126468    0.16   0.8691    
-## scale(fire_age3)                   -0.020310   0.107704   -0.19   0.8504    
-## scale(fire_age0)                   -0.086321   0.118460   -0.73   0.4662    
-## scale(fire_age2)                   -0.178964   0.145690   -1.23   0.2193    
-## scale(fire_age4)                          NA         NA      NA       NA    
-## scale(tree_shrub)                   0.247660   0.125775    1.97   0.0489 *  
-## scale(Groundcover)                  0.001678   0.098138    0.02   0.9864    
-## scale(Predators)                    0.098302   0.040083    2.45   0.0142 *  
-## scale(Water)                        0.025759   0.059696    0.43   0.6661    
-## scale(TRI_extracted)               -0.268287   0.127911   -2.10   0.0360 *  
-## scale(Arctic_DEM_500m_elevation_m) -0.191587   0.140876   -1.36   0.1738    
+##                  Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept)      -4.67971    0.12900  -36.28  &lt; 2e-16 ***
+## scale(Predators)  0.10718    0.04005    2.68  0.00745 ** 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<div id="plotting-coefficients-estimates" class="section level2">
+<h2>Plotting coefficients estimates</h2>
+<p>#Plotting the coefficient estimates to visually see what variables
+are significant. In this example, I am plotting the coefficient
+estimates for the global model (mod2_global) from the second approach
+for the hypothesis driven approach.</p>
+<pre class="r"><code>#Get summary object
+sum &lt;- summary(mod2_global)
+
+#Extract coefficients for the mean model
+coef_table &lt;- coef(sum)$cond
+
+#Turn into a data frame
+coefficients_df &lt;- as.data.frame(coef_table)
+coefficients_df$Variable &lt;- rownames(coef_table)
+rownames(coefficients_df) &lt;- NULL
+
+#renaming column
+coefficients_df &lt;- coefficients_df %&gt;%
+rename(Std.Error = `Std. Error`)
+
+#Add confidence intervals
+coefficients_df &lt;- coefficients_df %&gt;%
+mutate(
+Lower = Estimate - 1.96 * Std.Error,
+Upper = Estimate + 1.96 * Std.Error)
+
+#Rename categories
+comp3 &lt;- coefficients_df %&gt;%
+mutate(Variable = as.character(Variable)) %&gt;%
+mutate(Variable = dplyr::recode(Variable,
+&quot;scale(log_esker_camera_distances)&quot; = &quot;Distance to Esker&quot;,
+&quot;scale(TRI_extracted)&quot; = &quot;Terrain Ruggedness&quot;,
+&quot;scale(fire_age0)&quot; = &quot;0-10 Years Post Fire&quot;,
+&quot;scale(fire_age1)&quot; = &quot;11-20 Years Post Fire&quot;,
+&quot;scale(fire_age3)&quot; = &quot;21-30 Years Post Fire&quot;,
+&quot;scale(fire_age4)&quot; = &quot;30 Plus Years Post Fire&quot;,
+&quot;scale(Arctic_DEM_500m_elevation_m)&quot; = &quot;Elevation&quot;,
+&quot;scale(Shrub)&quot; = &quot;Shrub&quot;,
+&quot;scale(Groundcover)&quot; = &quot;Groundcover&quot;,
+&quot;scale(Predators)&quot; = &quot;Predators&quot;,
+&quot;(Intercept)&quot;=&quot;Intercept&quot;))
+
+#Specify the desired order of categories
+desired_order5 &lt;- c(&quot;Distance to Esker&quot;,
+&quot;Elevation&quot;,
+&quot;Groundcover&quot;,
+&quot;Predators&quot;,
+&quot;Shrub&quot;,
+&quot;Terrain Ruggedness&quot;,
+&quot;0-10 Years Post Fire&quot;,
+&quot;11-20 Years Post Fire&quot;,
+&quot;21-30 Years Post Fire&quot;,
+&quot;30 Plus Years Post Fire&quot;,
+&quot;Intercept&quot;)
+
+#Reorder the factor levels in the data frame
+comp3$Variable &lt;- factor(comp3$Variable, levels = desired_order5)
+
+# Reorder factor to put Intercept last (bottom of plot)
+comp3$Variable &lt;- factor(comp3$Variable, levels = c(
+  setdiff(unique(comp3$Variable), &quot;Intercept&quot;), &quot;Intercept&quot;
+))
+
+# Plot coef_estimates
+coef_estimates &lt;- ggplot(comp3,aes(x=Variable,y=Estimate)) +
+geom_hline(yintercept = 0, col = &quot;darkgrey&quot;) + # Horizontal line at y = 0
+geom_point() +
+geom_errorbar(aes(ymin=Lower,ymax=Upper)) +
+coord_flip() +
+labs(x= &quot;Variable&quot;, y= &quot;Coefficent estimate&quot;) +
+labs(title = &quot;Coefficent Estimates&quot;) +
+theme(
+axis.title.y = element_text(margin = margin(t = 0, r = 30, b = 0, l = 0)),
+panel.background = element_rect(fill = &#39;white&#39;, colour = &#39;darkgrey&#39;),
+panel.grid.major = element_line(colour = &#39;white&#39;),
+text = element_text(size = 6), # Increase overall font size
+axis.title = element_text(size = 6), # Axis titles
+axis.text = element_text(size = 6)) # Axis text
+
+#Save the plot (pdf)
+ggsave(
+filename = &quot;./Plots/coef_estimates.pdf&quot;,
+plot = coef_estimates,
+device = &quot;pdf&quot;, height = 10, width = 17,
+units = &quot;cm&quot;)
+
+#Save the plot (jpeg)
+ggsave(
+filename = &quot;./Plots/coef_estimates.jpg&quot;,
+plot = coef_estimates,
+device = &quot;jpg&quot;, height = 10, width = 17,
+units = &quot;cm&quot;)</code></pre>
+</div>
+<div id="global-summer-models" class="section level2">
+<h2>Global Summer Models</h2>
+</div>
+</div>
+<div id="section" class="section level1">
+<h1></h1>
+<pre class="r"><code>#running global summer model with shrub and not trees. fire_age4 is giving NAs, deleted fire_age4 as it should be used as a reference. removed scale from Fire_1
+mod_global_sum_shrub &lt;- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age1) + scale(fire_age4) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = model_variables %&gt;% filter(season == &quot;Summer&quot;)) </code></pre>
+<div id="dredging" class="section level2">
+<h2>Dredging</h2>
+<p>Pros: - Lets you see all combinations of the variables - Lets you see
+if a combination you haven’t thought of is better than the combination
+you came up with based on hypotheses - Appropriate method to make a
+predictive model/estimating distribution of a species</p>
+<p>Cons: - “By passing the hard thinking” - This method might find the
+strongest variables, but doesn’t always mean causation. Need to
+understand biology behind it! - When dredging, you increase the chance
+of finding statistically significant results that are actually due to
+random chance, rather than a true relationship in the data.</p>
+<p>I tried to dredge my models with all the variables in my data set and
+left it to run for 3 days. After 3 days it was still running, so I
+stopped it. It usually shouldn’t take that long to dredge. I removed
+half of the variables in the data set and ran the dredging package again
+and it worked. But now, half my variables are gone that are important to
+include. I also received mixed opinions on whether I should use dredging
+in my models or not, so I took that into consideration with what model
+selection method I should use.</p>
+<pre class="r"><code>#summer dredge
+# data_summer &lt;- model_variables %&gt;% filter(season == &quot;Summer&quot;)
+# model_global_sum_5 &lt;- glmmTMB(Muskox ~ scale(fire_age1) + scale(Shrub) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(TRI_extracted) +
+#                                 offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = data_summer, na.action = &quot;na.fail&quot;)
+# 
+# model_annual &lt;- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) + scale(Shrub) + scale(Bryoid) + scale(Herbs) + scale(`Treed_broadleaf`) + scale(`Treed_conifer`) + scale(gray_wolf) + scale(grizzly_bear) + scale(Water) + scale(TRI_extracted) +
+#                           offset(log(n_days_effort)) + (1|cluster), family=&quot;nbinom2&quot;, data = data_summer, na.action = &quot;na.fail&quot;)
+# 
+# annual_dredge &lt;- dredge(model_annual, fixed = ~offset(log(n_days_effort)) + (1|cluster))
+# 
+# summer_dredge &lt;- dredge(model_global_sum_5, fixed = ~cond(offset(log(n_days_effort))) + (1|cluster))</code></pre>
+</div>
+<div id="model-averaging" class="section level2">
+<h2>Model Averaging</h2>
+<p>Lets look at using model averaging on my global summer models.</p>
+<p>Pros: - Runs model between all competing models that are within 2
+delta of each other</p>
+<p>Cons: - Averaging together doesn’t really reflect any of the models
+you have - Can mask underlying issues or make it harder to understand
+the relationships between variables, as it averages out potentially
+important differences between models - Can still lead to over fitting,
+especially if a large number of models are included, some of which may
+not be well supported by the data - I could be wrong, but I believe in a
+meeting Frances said no to model averaging. I still wanted to explore it
+and see how it worked.</p>
+<pre class="r"><code>#model averaging top models from first hypothesis driven approach
+summer_top_models &lt;- subset(fmListAll, delta &lt;= 2)
+summer_modelav &lt;-model.avg(summer_top_models)
+summary(summer_modelav)</code></pre>
+<pre><code>## 
+## Call:
+## model.avg(object = summer_top_models)
+## 
+## Component model call: 
+## glmmTMB(formula = Muskox ~ &lt;2 unique rhs&gt;, data = model_variables %&gt;% 
+##      filter(season == &quot;Summer&quot;), family = nbinom2, ziformula = ~0, 
+##      dispformula = ~1)
+## 
+## Component models: 
+##                            df   logLik    AICc delta weight
+## 1+2                         4 -2148.06 4304.12  0.00   0.51
+## 1+2+3+4+5+6+7+8+9+10+11+12 14 -2138.07 4304.21  0.09   0.49
+## 
+## Term codes: 
+##         cond(offset(log(n_days_effort))) 
+##                                        1 
+##                   cond(scale(Predators)) 
+##                                        2 
+##                   cond(scale(fire_age0)) 
+##                                        3 
+##                   cond(scale(fire_age1)) 
+##                                        4 
+##                   cond(scale(fire_age3)) 
+##                                        5 
+##                   cond(scale(fire_age4)) 
+##                                        6 
+##                 cond(scale(Groundcover)) 
+##                                        7 
+##                       cond(scale(Shrub)) 
+##                                        8 
+## cond(scale(Arctic_DEM_500m_elevation_m)) 
+##                                        9 
+##  cond(scale(log_esker_camera_distances)) 
+##                                       10 
+##               cond(scale(TRI_extracted)) 
+##                                       11 
+##                       cond(scale(Water)) 
+##                                       12 
+## 
+## Model-averaged coefficients:  
+## (full average) 
+##                                           Estimate Std. Error Adjusted SE
+## cond((Int))                              -4.682992   0.124116    0.124136
+## cond(scale(Predators))                    0.102839   0.040309    0.040316
+## cond(scale(Water))                       -0.013716   0.047342    0.047349
+## cond(scale(log_esker_camera_distances))   0.010183   0.089054    0.089068
+## cond(scale(TRI_extracted))               -0.131148   0.161163    0.161171
+## cond(scale(fire_age1))                    0.127872   0.152671    0.152677
+## cond(scale(fire_age4))                    0.102876   0.159387    0.159402
+## cond(scale(fire_age3))                    0.032339   0.085972    0.085983
+## cond(scale(fire_age0))                    0.009305   0.095054    0.095069
+## cond(scale(Arctic_DEM_500m_elevation_m)) -0.093715   0.137427    0.137438
+## cond(scale(Shrub))                       -0.129022   0.161861    0.161870
+## cond(scale(Groundcover))                 -0.028826   0.077460    0.077470
+##                                          z value Pr(&gt;|z|)    
+## cond((Int))                               37.725   &lt;2e-16 ***
+## cond(scale(Predators))                     2.551   0.0107 *  
+## cond(scale(Water))                         0.290   0.7721    
+## cond(scale(log_esker_camera_distances))    0.114   0.9090    
+## cond(scale(TRI_extracted))                 0.814   0.4158    
+## cond(scale(fire_age1))                     0.838   0.4023    
+## cond(scale(fire_age4))                     0.645   0.5187    
+## cond(scale(fire_age3))                     0.376   0.7068    
+## cond(scale(fire_age0))                     0.098   0.9220    
+## cond(scale(Arctic_DEM_500m_elevation_m))   0.682   0.4953    
+## cond(scale(Shrub))                         0.797   0.4254    
+## cond(scale(Groundcover))                   0.372   0.7098    
+##  
+## (conditional average) 
+##                                          Estimate Std. Error Adjusted SE
+## cond((Int))                              -4.68299    0.12412     0.12414
+## cond(scale(Predators))                    0.10284    0.04031     0.04032
+## cond(scale(Water))                       -0.02805    0.06466     0.06467
+## cond(scale(log_esker_camera_distances))   0.02082    0.12648     0.12650
+## cond(scale(TRI_extracted))               -0.26819    0.12791     0.12793
+## cond(scale(fire_age1))                    0.26149    0.11280     0.11282
+## cond(scale(fire_age4))                    0.21038    0.17127     0.17130
+## cond(scale(fire_age3))                    0.06613    0.11349     0.11351
+## cond(scale(fire_age0))                    0.01903    0.13525     0.13527
+## cond(scale(Arctic_DEM_500m_elevation_m)) -0.19164    0.14090     0.14093
+## cond(scale(Shrub))                       -0.26384    0.13418     0.13420
+## cond(scale(Groundcover))                 -0.05895    0.10244     0.10246
+##                                          z value Pr(&gt;|z|)    
+## cond((Int))                               37.725   &lt;2e-16 ***
+## cond(scale(Predators))                     2.551   0.0107 *  
+## cond(scale(Water))                         0.434   0.6645    
+## cond(scale(log_esker_camera_distances))    0.165   0.8692    
+## cond(scale(TRI_extracted))                 2.096   0.0360 *  
+## cond(scale(fire_age1))                     2.318   0.0205 *  
+## cond(scale(fire_age4))                     1.228   0.2194    
+## cond(scale(fire_age3))                     0.583   0.5601    
+## cond(scale(fire_age0))                     0.141   0.8881    
+## cond(scale(Arctic_DEM_500m_elevation_m))   1.360   0.1739    
+## cond(scale(Shrub))                         1.966   0.0493 *  
+## cond(scale(Groundcover))                   0.575   0.5651    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>#model averaging top models from second hypothesis driven approach
+summer_top_models2 &lt;- subset(fmListAll2, delta &lt;= 2)
+summer_modelav2 &lt;-model.avg(summer_top_models2)
+summary(summer_modelav2)</code></pre>
+<pre><code>## 
+## Call:
+## model.avg(object = summer_top_models2)
+## 
+## Component model call: 
+## glmmTMB(formula = Muskox ~ &lt;3 unique rhs&gt;, data = model_variables %&gt;% 
+##      filter(season == &quot;Summer&quot;), family = nbinom2, ziformula = ~0, 
+##      dispformula = ~1)
+## 
+## Component models: 
+##                            df   logLik    AICc delta weight
+## 1+2                         4 -2148.06 4304.12  0.00   0.43
+## 1+2+3+4+5+6+7+8+9+10+11+12 14 -2138.07 4304.21  0.09   0.41
+## 1+10+11+12                  6 -2147.00 4306.01  1.89   0.17
+## 
+## Term codes: 
+##         cond(offset(log(n_days_effort))) 
+##                                        1 
+##                   cond(scale(Predators)) 
+##                                        2 
+##                 cond(scale(Groundcover)) 
+##                                        3 
+##                       cond(scale(Shrub)) 
+##                                        4 
+##                       cond(scale(Water)) 
+##                                        5 
+##                   cond(scale(fire_age0)) 
+##                                        6 
+##                   cond(scale(fire_age1)) 
+##                                        7 
+##                   cond(scale(fire_age3)) 
+##                                        8 
+##                   cond(scale(fire_age4)) 
+##                                        9 
+## cond(scale(Arctic_DEM_500m_elevation_m)) 
+##                                       10 
+##  cond(scale(log_esker_camera_distances)) 
+##                                       11 
+##               cond(scale(TRI_extracted)) 
+##                                       12 
+## 
+## Model-averaged coefficients:  
+## (full average) 
+##                                           Estimate Std. Error Adjusted SE
+## cond((Int))                              -4.682193   0.124595    0.124615
+## cond(scale(Predators))                    0.085800   0.053081    0.053085
+## cond(scale(log_esker_camera_distances))   0.014971   0.096526    0.096541
+## cond(scale(TRI_extracted))               -0.161081   0.169130    0.169138
+## cond(scale(fire_age1))                    0.106685   0.147333    0.147338
+## cond(scale(fire_age4))                    0.085832   0.150526    0.150539
+## cond(scale(fire_age3))                    0.026981   0.079443    0.079453
+## cond(scale(fire_age0))                    0.007764   0.086892    0.086905
+## cond(scale(Arctic_DEM_500m_elevation_m)) -0.125260   0.154020    0.154031
+## cond(scale(Shrub))                       -0.107645   0.155433    0.155440
+## cond(scale(Groundcover))                 -0.024050   0.071560    0.071569
+## cond(scale(Water))                       -0.011444   0.043542    0.043549
+##                                          z value Pr(&gt;|z|)    
+## cond((Int))                               37.573   &lt;2e-16 ***
+## cond(scale(Predators))                     1.616    0.106    
+## cond(scale(log_esker_camera_distances))    0.155    0.877    
+## cond(scale(TRI_extracted))                 0.952    0.341    
+## cond(scale(fire_age1))                     0.724    0.469    
+## cond(scale(fire_age4))                     0.570    0.569    
+## cond(scale(fire_age3))                     0.340    0.734    
+## cond(scale(fire_age0))                     0.089    0.929    
+## cond(scale(Arctic_DEM_500m_elevation_m))   0.813    0.416    
+## cond(scale(Shrub))                         0.693    0.489    
+## cond(scale(Groundcover))                   0.336    0.737    
+## cond(scale(Water))                         0.263    0.793    
+##  
+## (conditional average) 
+##                                          Estimate Std. Error Adjusted SE
+## cond((Int))                              -4.68219    0.12459     0.12461
+## cond(scale(Predators))                    0.10284    0.04031     0.04032
+## cond(scale(log_esker_camera_distances))   0.02610    0.12630     0.12632
+## cond(scale(TRI_extracted))               -0.28079    0.12747     0.12749
+## cond(scale(fire_age1))                    0.26149    0.11280     0.11282
+## cond(scale(fire_age4))                    0.21038    0.17127     0.17130
+## cond(scale(fire_age3))                    0.06613    0.11349     0.11351
+## cond(scale(fire_age0))                    0.01903    0.13525     0.13527
+## cond(scale(Arctic_DEM_500m_elevation_m)) -0.21835    0.14500     0.14502
+## cond(scale(Shrub))                       -0.26384    0.13418     0.13420
+## cond(scale(Groundcover))                 -0.05895    0.10244     0.10246
+## cond(scale(Water))                       -0.02805    0.06466     0.06467
+##                                          z value Pr(&gt;|z|)    
+## cond((Int))                               37.573   &lt;2e-16 ***
+## cond(scale(Predators))                     2.551   0.0107 *  
+## cond(scale(log_esker_camera_distances))    0.207   0.8363    
+## cond(scale(TRI_extracted))                 2.202   0.0276 *  
+## cond(scale(fire_age1))                     2.318   0.0205 *  
+## cond(scale(fire_age4))                     1.228   0.2194    
+## cond(scale(fire_age3))                     0.583   0.5601    
+## cond(scale(fire_age0))                     0.141   0.8881    
+## cond(scale(Arctic_DEM_500m_elevation_m))   1.506   0.1322    
+## cond(scale(Shrub))                         1.966   0.0493 *  
+## cond(scale(Groundcover))                   0.575   0.5651    
+## cond(scale(Water))                         0.434   0.6645    
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
 </div>
-<div id="interpreting-results" class="section level2">
-<h2>Interpreting Results</h2>
-<p>From all three of these summer models (shrub, trees, trees-shrub),
-they are telling the same story. Estimate value for trees is 0.26,
-shrubs is -0.26, and trees-shrub is 0.25. In plain language, muskox
-frequency of detections increase when tree cover increases, and muskox
-detections decrease with an increase of shrub cover. For predators:
-predator detections increase when there is an increase of muskox
-detections. When TRI increases, muskox detections decrease. Throughout
-all three models, shrubs/trees, predators, and TRI have a p-value under
-0.05. From this, we can say that tree land cover and predators are
-influencing muskox occurrence the most out of all the variables in my
-dataset during the summer.</p>
+<div id="interpreting-these-model-selection-methods" class="section level2">
+<h2>Interpreting these model selection methods</h2>
+<p>The approach that I would like to go with for my thesis is the second
+hypothesis driven approach I have in this document (lines 177 to 254).
+The best fitting model from this approach is mod2_global (global model,
+AIC = 4302.4) and the second is mod2_pred_sum_2 (grizzly bears and gray
+wolves, AIC = 4304.1). These were the only two models that were within 2
+delta. Within the global model, the predator and fire_age1 variables
+best described muskox occurrence in TDN. This aligns with my hypotheses
+as I predicted muskox detections would increase with the increase of
+burned areas that were 11-20 years old (fire_age1). I also hypothesized
+that as muskox detections would decrease as predator detections
+increase, and these models support that hypothesis. Another thing to
+note within mod2_global is the estimate for terrain ruggedness was
+-0.258, implying that muskox are not selecting areas with higher terrain
+ruggedness.</p>
+</div>
 </div>
 
 
