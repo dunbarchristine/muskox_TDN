@@ -7,13 +7,13 @@ output: html_document
 
 ## Looking at different model selection methods and trying to determine which will work best for my thesis. 
 
-# I will be looking at four different model selection methods in this document: StepAIC, the hypothesis driven approach, dredging and model averaging. I chose these methods as they have been brought up in past conversations with lab mates, advisors, and in articles that have performed similar research. I wanted to explore these different methods to help me get a better understanding of how each one works, and how they differ from one another. I also think it helps me overall understand my data better. 
+I will be looking at four different model selection methods in this document: StepAIC, the hypothesis driven approach, dredging and model averaging. I chose these methods as they have been brought up in past conversations with lab mates, advisors, and in articles that have performed similar research. I wanted to explore these different methods to help me get a better understanding of how each one works, and how they differ from one another. I also think it helps me overall understand my data better. 
 
 ##Packages
 
 Load in packages.
 
-```{r packages, include=FALSE}
+```{r packages, include=TRUE}
 
 library(vcd)
 library(lme4)
@@ -68,23 +68,23 @@ Cons to using StepAIC:
 
 ```{r StepAIC, echo=TRUE}
 
-#scaling the variables. I had the scale function in front of each variable, but we tried this way to see if the stepAIC function would work. It wasnt working before when I had the scale in front of each variable. It still did not run when trying it this way
+#scaling the variables. 
 
-model_data <- model_variables %>% filter(season == "Summer" )%>% mutate(tree_shrub = Trees - Shrub)
+model_data <- model_variables %>% filter(season == "Summer" )
 z_model_data <- MuMIn::stdize(model_data) # standarized covariates
 
 #adding the scaled variables to dataset
 model_data <- model_data %>%
   left_join(z_model_data)
 
-#original model with all variables. fire_age2 was removed due to high collinearity with fire_age4
-mod_global_sum_trees_2 <- buildglmmTMB(Muskox ~ z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 + scale(fire_age1) + scale(fire_age4) + scale(tree_shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
-                                 (1|cluster) + offset(log(n_days_effort)), family="nbinom2", data = model_data, 
-                                 buildmerControl = buildmerControl(crit = "AIC", direction = "backward", calc.anova = TRUE, include = ~ (1|cluster) + offset(log(n_days_effort)))) 
+#original model with all variables. fire_age2 was removed due to high collinearity with fire_age4, and trees removed due to high collinearity with shrub
+mod_global_shrub <- buildglmmTMB(Muskox ~ z.log_esker_camera_distances + z.fire_age3 + z.fire_age0 + scale(fire_age1) + scale(fire_age4) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                 (1|cluster) + offset(log(N_days_effort)), family="nbinom2", data = model_data, 
+                                 buildmerControl = buildmerControl(crit = "AIC", direction = "backward", calc.anova = TRUE, include = ~ (1|cluster) + offset(log(N_days_effort)))) 
 
 #check_collinearity(mod_global_sum_trees_2)
-mod_global_sum_trees_2@p$tab
-summary(mod_global_sum_trees_2) 
+mod_global_shrub@p$tab
+summary(mod_global_shrub) 
 
 ```
 
@@ -102,62 +102,62 @@ Cons:
 
 ```{r Hypothesis, echo=TRUE}
 
-mod_null_all_1 <- glmmTMB(Muskox ~ 1+ offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables  %>% filter(season == "Summer"))
+mod_null_all_1 <- glmmTMB(Muskox ~ 1+ offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables  %>% filter(season == "Summer"))
 
 #summer predation 
-mod_pred_sum_1 <- glmmTMB(Muskox ~ scale(Predators) + offset(log(n_days_effort)) + (1|cluster),
+mod_pred_sum_1 <- glmmTMB(Muskox ~ scale(Predators) + offset(log(N_days_effort)) + (1|cluster),
                           family="nbinom2", data = model_variables %>% filter(season == "Summer")) #both grizz and wolf
 
 #summer food
 mod_food_sum_3 <- glmmTMB(Muskox ~ scale(Shrub) + scale(Groundcover) + scale(fire_age1) + scale(fire_age3) + scale(fire_age0) + scale(fire_age4) +
-                            offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+                            offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
 
 mod_food_sum_3.1 <- glmmTMB(Muskox ~ scale(Shrub) + 
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just shrub variable (estimate: -0.25)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just shrub variable (estimate: -0.25)
 
 mod_food_sum_3.2 <- glmmTMB(Muskox ~ scale(Groundcover) +
-                            offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just herbs variable (estimate: 0.078)
+                            offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just herbs variable (estimate: 0.078)
 
 mod_food_sum_3.3 <- glmmTMB(Muskox ~ scale(fire_age1) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age1 variable (estimate: 0.2134)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age1 variable (estimate: 0.2134)
 
 mod_food_sum_3.4 <- glmmTMB(Muskox ~ scale(fire_age3) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age3 variable (estimate: 0.008601)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age3 variable (estimate: 0.008601)
 
 mod_food_sum_3.5 <- glmmTMB(Muskox ~ scale(fire_age0) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age0 variable (estimate: -0.04603)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age0 variable (estimate: -0.04603)
 mod_food_sum_3.6 <- glmmTMB(Muskox ~ scale(Shrub) + scale(Groundcover) +
-                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running just vegetation variables for food hypothesis to compare to just fire variables 
+                               offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running just vegetation variables for food hypothesis to compare to just fire variables 
 
 mod_food_sum_3.7 <- glmmTMB(Muskox ~ scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running just fire variables for food hypothesis
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running just fire variables for food hypothesis
 
 
 #summer thermoregulation
 mod_therm_sum_4 <- glmmTMB(Muskox ~ scale(Water) + scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) + scale(Arctic_DEM_500m_elevation_m) +
-                             offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #all variables I think support thermoregulation hypothesis
+                             offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #all variables I think support thermoregulation hypothesis
 
 mod_therm_sum_4.1 <- glmmTMB(Muskox ~ scale(`Water`) +
-                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just water variable (estimate: 0.08528)
+                               offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just water variable (estimate: 0.08528)
 
 mod_therm_sum_4.2 <- glmmTMB(Muskox ~ scale(`log_esker_camera_distances`) +
-                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just log_esker_camera_distances variable (estimate: 0.01676)
+                               offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just log_esker_camera_distances variable (estimate: 0.01676)
 
 mod_therm_sum_4.3 <- glmmTMB(Muskox ~ scale(TRI_extracted)+
-                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just water variable (estimate: 0.08528)
+                               offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just water variable (estimate: 0.08528)
 
 mod_therm_sum_4.4 <- glmmTMB(Muskox ~ scale(Arctic_DEM_500m_elevation_m) +
-                             offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #all variables I think support thermoregulation hypothesis
+                             offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #all variables I think support thermoregulation hypothesis
 
 mod_therm_sum_4.5 <- glmmTMB(Muskox ~ scale(Water) + scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) + 
-                             offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #all variables I think support thermoregulation hypothesis
+                             offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #all variables I think support thermoregulation hypothesis
 
 
-mod_global_sum_shrub <- glmmTMB(Muskox ~ scale(Water) + scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) + scale(Arctic_DEM_500m_elevation_m) + scale(Shrub) + scale(Groundcover) + scale(Predators) +
-                             offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer"))
+mod_global <- glmmTMB(Muskox ~ scale(Water) + scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) + scale(Arctic_DEM_500m_elevation_m) + scale(Shrub) + scale(Groundcover) + scale(Predators) +
+                             offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer"))
 
 fmListAll <- model.sel(mod_null_all_1=mod_null_all_1, mod_pred_sum_1=mod_pred_sum_1, mod_food_sum_3=mod_food_sum_3, mod_food_sum_3.1=mod_food_sum_3.1, mod_food_sum_3.2=mod_food_sum_3.2, mod_food_sum_3.3=mod_food_sum_3.3, mod_food_sum_3.4=mod_food_sum_3.4, mod_food_sum_3.5=mod_food_sum_3.5, mod_food_sum_3.6=mod_food_sum_3.6, mod_food_sum_3.7=mod_food_sum_3.7, mod_therm_sum_4=mod_therm_sum_4, mod_therm_sum_4.1=mod_therm_sum_4.1,
-                     mod_therm_sum_4.2=mod_therm_sum_4.2, mod_therm_sum_4.3=mod_therm_sum_4.3, mod_therm_sum_4.4=mod_therm_sum_4.4,mod_therm_sum_4.5=mod_therm_sum_4.5,mod_global_sum_shrub=mod_global_sum_shrub)
+                     mod_therm_sum_4.2=mod_therm_sum_4.2, mod_therm_sum_4.3=mod_therm_sum_4.3, mod_therm_sum_4.4=mod_therm_sum_4.4,mod_therm_sum_4.5=mod_therm_sum_4.5,mod_global=mod_global)
 
 fmListAll  
 
@@ -173,68 +173,68 @@ summary(mod_pred_sum_1)
 ```{r ModelSummaries2, echo=TRUE}
 
 #global model is also competitive with top model for the first hypothesis driven approach
-summary(mod_global_sum_shrub)
+summary(mod_global)
 
 ```
 
 ## Second Approach to Hypothesis Driven Approach
 
-# Trying a different approach to the hypothesis driven approach, different hypotheses: predation, groundcover, fire and topography models instead of my original hypotheses: predation, food and thermoregulation. I'm looking at this second approach because my original models shared some of the same variables, like fire age. Both my food and thermoregulation hypotheses had fire ages 0,1,3, and 4. So for this second approach, I don't want any of the same variables to overlap with other models. I think this will help me better understand what is actually causing muskox occurrence in TDN. 
+Trying a different approach to the hypothesis driven approach, different hypotheses: predation, groundcover, fire and topography models instead of my original hypotheses: predation, food and thermoregulation. I'm looking at this second approach because my original models shared some of the same variables, like fire age. Both my food and thermoregulation hypotheses had fire ages 0,1,3, and 4. So for this second approach, I don't want any of the same variables to overlap with other models. I think this will help me better understand what is actually causing muskox occurrence in TDN. 
 
 ```{r SecondApproach, echo=TRUE}
 
-mod2_null_sum_1 <- glmmTMB(Muskox ~ 1+ offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables  %>% filter(season == "Summer"))
+mod2_null_sum_1 <- glmmTMB(Muskox ~ 1+ offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables  %>% filter(season == "Summer"))
 
 #summer predation 
-mod2_pred_sum_2 <- glmmTMB(Muskox ~ scale(Predators) + offset(log(n_days_effort)) + (1|cluster),
+mod2_pred_sum_2 <- glmmTMB(Muskox ~ scale(Predators) + offset(log(N_days_effort)) + (1|cluster),
                           family="nbinom2", data = model_variables %>% filter(season == "Summer")) #both grizz and wolf
 
 #summer groundcover
 mod2_ground_sum_3 <- glmmTMB(Muskox ~ scale(Shrub) + scale(Groundcover) + scale(Water) +
-                            offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer"))
+                            offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer"))
 
 mod2_ground_sum_3.1 <- glmmTMB(Muskox ~ scale(Shrub) + 
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just shrub variable (estimate: -0.25)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just shrub variable (estimate: -0.25)
 
 mod2_ground_sum_3.2 <- glmmTMB(Muskox ~ scale(Groundcover) +
-                            offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just herbs variable (estimate: 0.078)
+                            offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just herbs variable (estimate: 0.078)
 
 mod2_ground_sum_3.3 <- glmmTMB(Muskox ~ scale(Water) +
-                            offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just herbs variable (estimate: 0.078)
+                            offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just herbs variable (estimate: 0.078)
 
 #summer fire
 mod2_fire_sum_4 <- glmmTMB(Muskox ~ scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running just fire variables for food hypothesis
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running just fire variables for food hypothesis
 
 mod2_fire_sum_4.1 <- glmmTMB(Muskox ~ scale(fire_age1) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age1 variable (estimate: 0.2134)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age1 variable (estimate: 0.2134)
 
 mod2_fire_sum_4.2 <- glmmTMB(Muskox ~ scale(fire_age3) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age3 variable (estimate: 0.008601)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age3 variable (estimate: 0.008601)
 
 mod2_fire_sum_4.3 <- glmmTMB(Muskox ~ scale(fire_age0) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age0 variable (estimate: -0.04603)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age0 variable (estimate: -0.04603)
 
 mod2_fire_sum_4.4 <- glmmTMB(Muskox ~ scale(fire_age4) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age0 variable (estimate: -0.04603)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age0 variable (estimate: -0.04603)
 
 #summer topo
 mod2_topo_sum_5 <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
-                             offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #all variables I think support thermoregulation hypothesis
+                             offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #all variables I think support thermoregulation hypothesis
 
 mod2_topo_sum_5.1 <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) +
-                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just water variable (estimate: 0.08528)
+                               offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just water variable (estimate: 0.08528)
 
 mod2_topo_sum_5.2 <- glmmTMB(Muskox ~ scale(TRI_extracted) +
-                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just log_esker_camera_distances variable (estimate: 0.01676)
+                               offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just log_esker_camera_distances variable (estimate: 0.01676)
 
 mod2_topo_sum_5.3 <- glmmTMB(Muskox ~ scale(Arctic_DEM_500m_elevation_m) +
-                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just water variable (estimate: 0.08528)
+                               offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just water variable (estimate: 0.08528)
 
 
 #global model
 mod2_global <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(TRI_extracted) + scale(fire_age1) + scale(fire_age4) + scale(fire_age3) + scale(fire_age0) + scale(Arctic_DEM_500m_elevation_m) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) +
-                             offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer"))
+                             offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer"))
 
 fmListAll2 <- model.sel(mod2_null_sum_1=mod2_null_sum_1,mod2_pred_sum_2=mod2_pred_sum_2,mod2_ground_sum_3=mod2_ground_sum_3, mod2_ground_sum_3.1=mod2_ground_sum_3.1, mod2_ground_sum_3.2=mod2_ground_sum_3.2, mod2_ground_sum_3.3=mod2_ground_sum_3.3, mod2_fire_sum_4=mod2_fire_sum_4, mod2_fire_sum_4.1=mod2_fire_sum_4.1, mod2_fire_sum_4.2=mod2_fire_sum_4.2, mod2_fire_sum_4.3=mod2_fire_sum_4.3, mod2_fire_sum_4.4=mod2_fire_sum_4.4, mod2_topo_sum_5=mod2_topo_sum_5,mod2_topo_sum_5.1=mod2_topo_sum_5.1, mod2_topo_sum_5.2=mod2_topo_sum_5.2, mod2_topo_sum_5.3=mod2_topo_sum_5.3, mod2_global=mod2_global)
 
@@ -257,7 +257,7 @@ summary(mod2_pred_sum_2)
 ```
 ## Plotting coefficients estimates
 
-#Plotting the coefficient estimates to visually see what variables are significant. In this example, I am plotting the coefficient estimates for the global model (mod2_global) from the second approach for the hypothesis driven approach.
+Plotting the coefficient estimates to visually see what variables are significant. In this example, I am plotting the coefficient estimates for the global model (mod2_global) from the second approach for the hypothesis driven approach.
 
 ```{r plotcoeficient, echo=TRUE}
 #Get summary object
@@ -353,13 +353,11 @@ units = "cm")
 
 ## Global Summer Models 
 
-#
 
 ```{r GlobalModel, echo=TRUE}
 
-#running global summer model with shrub and not trees. fire_age4 is giving NAs, deleted fire_age4 as it should be used as a reference. removed scale from Fire_1
-mod_global_sum_shrub <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age1) + scale(fire_age4) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
-                                offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+mod_global <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age1) + scale(fire_age4) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
 
 ```
 
@@ -377,6 +375,8 @@ Cons:
 - When dredging, you increase the chance of finding statistically significant results that are actually due to random chance, rather than a true relationship in the data.
 
 I tried to dredge my models with all the variables in my data set and left it to run for 3 days. After 3 days it was still running, so I stopped it. It usually shouldn't take that long to dredge. I removed half of the variables in the data set and ran the dredging package again and it worked. But now, half my variables are gone that are important to include. I also received mixed opinions on whether I should use dredging in my models or not, so I took that into consideration with what model selection method I should use. 
+
+The code I was using is below but I hashed it out because it was taking a long time to run still. I only did this for the summer months as there aren't many detections of muskox in the winter. I will not be using dredging as I think there are better options to best explain muskox occurrence in TDN, i.e. the hypothesis driven approach.
 
 ```{r Dredging, echo=TRUE}
 
@@ -423,11 +423,23 @@ summer_top_models2 <- subset(fmListAll2, delta <= 2)
 summer_modelav2 <-model.avg(summer_top_models2)
 summary(summer_modelav2)
 ```
+```{r Corrplot, echo=TRUE}
+#looking at correlations between variables
 
+## selecting variables for correlation matrix
+subset2 <- model_variables %>%
+  dplyr::select(32, 33, 34, 2, 3, 4, 5, 6, 8, 25, 28, 29, 11) %>%
+  dplyr::mutate(Predators = as.numeric(Predators))
+
+# Compute correlation matrix
+cor_matrix2 <- cor(subset2, use = "complete.obs")
+
+corrplot(cor_matrix2, method = "color", tl.cex = 0.6)
+```
 
 ## Interpreting these model selection methods 
 
-The approach that I would like to go with for my thesis is the second hypothesis driven approach I have in this document (lines 177 to 254). The best fitting model from this approach is mod2_global (global model, AIC = 4302.4) and the second is mod2_pred_sum_2 (grizzly bears and gray wolves, AIC = 4304.1). These were the only two models that were within 2 delta. Within the global model, the predator and fire_age1 variables best described muskox occurrence in TDN. This aligns with my hypotheses as I predicted muskox detections would increase with the increase of burned areas that were 11-20 years old (fire_age1). I also hypothesized that as muskox detections would decrease as predator detections increase, and these models support that hypothesis. Another thing to note within mod2_global is the estimate for terrain ruggedness was -0.258, implying that muskox are not selecting areas with higher terrain ruggedness. 
+The approach that I would like to go with for my thesis is the second hypothesis driven approach I have in this document (lines 177 to 254). This is because I am guiding my models based on hypotheses that I have spent ampile time researching about that reflect the biology and life style of muskoxen. The best fitting model from this approach is mod2_global (global model, AIC = 4302.4) and the second is mod2_pred_sum_2 (grizzly bears and gray wolves, AIC = 4304.1). These were the only two models that were within 2 delta. Within the global model, the predator and fire_age1 variables best described muskox occurrence in TDN. This aligns with my hypotheses as I predicted muskox detections would increase with the increase of burned areas that were 11-20 years old (fire_age1). I also hypothesized that as muskox detections would decrease as predator detections increase, and these models support that hypothesis. Another variable that came out as significant within mod2_global was terrain ruggedness index (TRI). The estimate for TRI was -0.258, implying that muskox are not selecting areas with higher TRI. This result also supports my hypothesis for TRI in the summer, as I thought muskox would be selecting areas that have a lower TRI as it could be easier for them to move around and/or escape predators. The last variable that came out as significant in mod2_global was shrubs. The estimate for shrub was -0.241, implying that muskox are selecting against areas with more shrub cover. This result was unexpected as I thought there would be higher detections of muskox within the shrub landcover as I thought they would use that area for possible foraging. I had to remove the tree variable from my models as it was highly correlated with shrubs (see correlation matrix on line 439). 
 
 
 
