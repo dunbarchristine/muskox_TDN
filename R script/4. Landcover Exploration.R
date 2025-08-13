@@ -238,4 +238,124 @@ corrplot(correlation_matrix, method="circle")
 
 
 
+##herbs
+# Convert the data to long format
+all_variables_long_herbs <- model_variables %>%
+  pivot_longer(cols = starts_with("Herbs"),  # Select all columns starting with "Herbs"
+               names_to = "Herbs",            # New column for the fire age category
+               values_to = "proportion")    # New column for muskox detection
+
+
+#trying to get muskox summary detections in herb land cover with my old code. not working 
+herb_detection_summary <- all_variables_long_herbs %>%
+  group_by(Herbs) %>%
+  summarise(total_detections = sum(proportion > 0, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total_detections))  # Sort by the number of detections
+
+##shrubs
+#trying to get muskox summary detections in shrubs land cover with my old code. not working 
+all_variables_long_shrubs <- model_variables %>%
+  pivot_longer(cols = starts_with("Shrub"),  # Select all columns starting with "fire_age"
+               names_to = "Shrub",            # New column for the fire age category
+               values_to = "proportion")    # New column for muskox detection
+
+# Count the number of muskox detections (where detection > 0) for each fire age
+shrubs_detection_summary <- all_variables_long_shrubs %>%
+  group_by(Shrub) %>%
+  summarise(total_detections = sum(proportion > 0, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total_detections))  # Sort by the number of detections
+
+
+# List of land cover proportion columns
+landcover_vars <- c("Herbs", "Shrub", "Treed_broadleaf", "Treed_conifer", 
+                    "Water", "Bryoid", "Treed_mixed", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4")
+
+# Total number of muskox detections in the dataset
+muskox_total_detections <- sum(model_variables$Muskox, na.rm = TRUE)
+
+# Calculate percentage of detections per land cover type
+muskox_by_landcover_pct <- sapply(landcover_vars, function(var) {
+  sum(model_variables$Muskox[model_variables[[var]] > 0], na.rm = TRUE) / muskox_total_detections * 100
+})
+
+# Convert to a tidy data frame
+muskox_by_landcover_pct <- tibble::enframe(muskox_by_landcover_pct,
+                                           name = "landcover_type",
+                                           value = "percent_of_total_detections")
+
+
+
+
+
+#trying to summarize muskox detections per landcover type
+# Define your landcover columns
+landcover_cols <- c("Groundcover", "Trees", "Shrub", 
+                    "Fire_age0", "Fire_age1", "Fire_age3", "Fire_age2", "Water")
+
+# Filter to rows where Muskox == 1
+detections_only <- model_variables %>%
+  st_drop_geometry() %>%
+  group_by(location) %>%
+  summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort), Shrub = mean(Shrub)) %>% 
+  mutate(Muskox_per_month=Muskox/N_days_effort*30, 
+         Shrub_group = case_when(
+         Shrub <= 0.25 ~ 0.125, 
+         Shrub <= 0.5 ~ 0.375,
+         Shrub <= 0.75 ~ 0.625,
+         Shrub <= 1 ~ 0.875
+         ))
+
+detections_only %>%
+  ggplot(aes(x = as.factor(Shrub_group), y = Muskox_per_month)) + 
+  geom_boxplot()
+
+
+muskox_detections <- model_variables %>%
+  st_drop_geometry() %>%
+  drop_na(N_days_effort) %>%
+  group_by(location, cluster, season) %>%
+  summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort),
+            Shrub = mean(Shrub), 
+            Trees = mean(Trees),
+            Groundcover = mean(Groundcover),
+            Water = mean(Water),
+            ) %>%
+  mutate(Muskox_per_month = Muskox/N_days_effort*30) %>%
+  pivot_longer(cols = c("Trees", "Groundcover", "Shrub", "Water"), names_to = "landcover_class", values_to = "proportion") %>%
+  group_by(location, cluster, season) %>%
+  filter(proportion == max(proportion)) %>%
+  group_by(landcover_class, season) %>%
+  summarise(Muskox = sum(Muskox), 
+            N_days_effort = sum(N_days_effort),
+            Muskox_per_month_mean = mean(Muskox_per_month), 
+            sd = sd(Muskox_per_month),
+            num_cameras = n(),
+            num_cluster = length(unique(cluster)))
+
+
+
+ggplot(muskox_detections, aes(x = landcover_class, y = Muskox_per_month_mean)) +
+  geom_point() +
+  geom_pointrange(aes(ymin = Muskox_per_month_mean -sd, ymax = Muskox_per_month_mean +sd)) +
+  facet_wrap(~season)
+
+
+
+
+
+# For each landcover column, count how many detections occurred where landcover > 0
+detection_counts <- detections_only %>%
+  summarise(across(all_of(c("Trees", "Groundcover", "Shrub", "fire_age0", "fire_age1", "fire_age3", "fire_age2", "Water")), 
+                   ~ sum(.x > 0, na.rm = TRUE))) %>%
+  pivot_longer(cols = everything(), names_to = "landcover", values_to = "muskox_detections")
+
+
+print(detection_counts)
+
+
+
+
+
+
+
 

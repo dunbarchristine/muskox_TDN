@@ -61,7 +61,7 @@ species_ind_data <- wt_ind_detect(
   remove_human = TRUE,
   remove_domestic = TRUE)
 
-#old
+
 #Summarising the independent detections by month
 summarised_month <- wt_summarise_cam(
   # Supply your detection data
@@ -73,18 +73,8 @@ summarised_month <- wt_summarise_cam(
   # What variable are you interested in?
   variable = "detections")
   # Your desired output format (wide or long)
-  #output_format = "wide",
-  #start_col_det = "start_time")
-  #exclude_out_of_range = TRUE)
-
-#new
-# Summarising the independent detections by month
-summarised_month <- wt_summarise_cam(
-  detect_data = species_ind_data,
-  raw_data = species_all,
-  time_interval = "month",
-  variable = "detections"
-)
+  output_format = "wide"
+  exclude_out_of_range = TRUE
 
 
 #colnames(species_ind_det)
@@ -100,11 +90,20 @@ summarised_week <- wt_summarise_cam(
   # Now specify the time interval you're interested in
   time_interval = "week",
   # What variable are you interested in?
-  variable = "detections")
+  variable = "detections",
   # Your desired output format (wide or long)
-  # output_format = "wide",
-  # start_col_det = "start_time",
-  # exclude_out_of_range = TRUE)
+  output_format = "wide",
+  exclude_out_of_range = TRUE) %>%
+  rename(N_days_effort = n_days_effort) %>%
+  select(location, week, year, N_days_effort)
+
+#I created a new column called "N_effort_days" that takes into account the actual days the cameras were active. I need to add this new N_effort_days to my dataset called model_variables 
+
+#adding new column to model_variables
+model_variables <- model_variables %>%
+  left_join(summarised_week)
+
+
 
 
 ##pulling out the camera ID, week, n effort, griz and gray wolf and muskox 

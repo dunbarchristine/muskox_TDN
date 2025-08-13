@@ -205,6 +205,7 @@ muskox_fire_age_detection_summary <- all_variables_long %>%
   summarise(total_detections = sum(proportion > 0, na.rm = TRUE), .groups = "drop") %>%
   arrange(desc(total_detections))  # Sort by the number of detections
 
+
 # View the summary
 muskox_detection_summary
 

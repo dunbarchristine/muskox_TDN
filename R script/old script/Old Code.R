@@ -1177,3 +1177,184 @@ mod_global_all_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_came
 
 
 #fire_rast_cropped_TDN <- crop(fire_rast, TDN_boundary, mask = TRUE)
+
+mod_global_sum_shrubs_trees <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Trees) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                         offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+
+
+
+
+
+
+
+
+mod_null_sum_1 <- glmmTMB(Muskox ~ 1+ offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables  %>% filter(season == "Summer"))
+
+#summer predation 
+mod_pred_sum_2 <- glmmTMB(Muskox ~ scale(grizzly_bear) + scale(gray_wolf) + offset(log(n_days_effort)) + (1|cluster),
+                          family="nbinom2", data = model_variables %>% filter(season == "Summer")) #both grizz and wolf
+
+mod_pred_sum_2.1 <-  glmmTMB(Muskox ~ scale(grizzly_bear) + offset(log(n_days_effort)) + (1|cluster),
+                             family="nbinom2", data = model_variables %>% filter(season == "Summer")) #grizzly bear only
+
+mod_pred_sum_2.2 <- glmmTMB(Muskox ~ scale(gray_wolf) + offset(log(n_days_effort)) + (1|cluster),
+                            family="nbinom2", data = model_variables %>% filter(season == "Summer")) #gray wolf only
+
+#summer food
+mod_food_sum_3 <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed_broadleaf`) + scale(Bryoid) + scale(Herbs) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) +
+                            offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+df = model_variables %>% filter(season == "Summer")
+mod_food_sum_3.1 <- glmmTMB(Muskox ~ scale(Shrub) + 
+                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = df ) #running model with just shrub variable (estimate: -0.25)
+
+mod_food_sum_3.2 <- glmmTMB(Muskox ~ scale(Herbs) +
+                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just herbs variable (estimate: 0.078)
+
+mod_food_sum_3.3 <- glmmTMB(Muskox ~ scale(Treed_broadleaf) +
+                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just Treed_broadleaf variable (estimate: 0.107)
+
+mod_food_sum_3.4 <- glmmTMB(Muskox ~ scale(Bryoid) +
+                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just bryoid variable (estimate: -0.0123)
+
+mod_food_sum_3.5 <- glmmTMB(Muskox ~ scale(fire_age1) +
+                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age1 variable (estimate: 0.2134)
+
+mod_food_sum_3.6 <- glmmTMB(Muskox ~ scale(fire_age2) +
+                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age2 variable (estimate: -0.1442)
+
+mod_food_sum_3.7 <- glmmTMB(Muskox ~ scale(fire_age3) +
+                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age3 variable (estimate: 0.008601)
+
+mod_food_sum_3.8 <- glmmTMB(Muskox ~ scale(fire_age0) +
+                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just fire_age0 variable (estimate: -0.04603)
+
+mod_food_sum_3.9 <- glmmTMB(Muskox ~ scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) +
+                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running just fire variables for food hypothesis
+
+mod_food_sum_3.10 <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed_broadleaf`) + scale(Bryoid) + scale(Herbs) +
+                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running just vegetation variables for food hypothesis to compare to just fire variables 
+
+#summer thermoregulation
+mod_therm_sum_4 <- glmmTMB(Muskox ~ scale(`Treed_mixed`)+ scale(`Treed_broadleaf`)+ scale(`Treed_conifer`)+ scale(Water) + scale(log_esker_camera_distances) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) + scale(TRI_extracted) +
+                             offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #all variables I think support thermoregulation hypothesis
+
+mod_therm_sum_4.1 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) +
+                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just treed_mixed variable (estimate: -0.1126)
+
+mod_therm_sum_4.2 <- glmmTMB(Muskox ~ scale(`Treed_conifer`) +
+                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just treed_conifer variable (estimate: 0.1482)
+
+mod_therm_sum_4.3 <- glmmTMB(Muskox ~ scale(`Water`) +
+                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just water variable (estimate: 0.08528)
+
+mod_therm_sum_4.4 <- glmmTMB(Muskox ~ scale(`log_esker_camera_distances`) +
+                               offset(log(n_days_effort)) + (1|cluster/location), family="nbinom2", data = model_variables %>% filter(season == "Summer")) #running model with just log_esker_camera_distances variable (estimate: 0.01676)
+
+mod_therm_sum_4.5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(`log_esker_camera_distances`) + scale(`Treed_broadleaf`)+ scale(`Treed_conifer`)+ scale(Water) + scale(TRI_extracted) +
+                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+
+
+#running global summer model with shrub and not trees. fire_age4 is giving NAs, deleted fire_age4 as it should be used as a reference. removed scale from Fire_1
+mod_global_sum_shrub <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age1) + scale(fire_age4) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                  offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+
+#running global summer model with trees and not shrubs. fire_age2 is giving NAs. deleted fire_age4 as it should be used as a reference
+mod_global_sum_trees <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Predators) + scale(Groundcover) + scale(Trees) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                  offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+
+#running global summer model with shrub values subtracted from tree values. fire_age2 again giving NAs. deleted fire_age4 as it should be used as a reference
+mod_global_sum_trees_2 <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age1) + scale(fire_age4) + scale(tree_shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                                    offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer" )%>% mutate(tree_shrub = Trees - Shrub)) 
+
+
+
+# #running global summer model with trees and not shrubs. fire_age2 is giving NAs. deleted fire_age4 as it should be used as a reference
+# mod_global_sum_trees <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Predators) + scale(Groundcover) + scale(Trees) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+#                                   offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+# 
+# #running global summer model with shrub values subtracted from tree values. fire_age2 again giving NAs. deleted fire_age4 as it should be used as a reference
+# mod_global_sum_trees_2 <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age1) + scale(fire_age4) + scale(tree_shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+#                                   offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer" )%>% mutate(tree_shrub = Trees - Shrub)) 
+
+
+# coef_estimates <- ggplot(comp3, aes(x = Variable, y = Estimate)) +
+#   geom_hline(yintercept = 0, col = "darkgrey") +
+#   geom_point() +
+#   geom_errorbar(aes(ymin = Lower, ymax = Upper)) +
+#   coord_flip() +
+#   labs(
+#     x = "Variable",
+#     y = "Coefficient estimate",
+#     title = "Coefficient Estimates"
+#   ) +
+#   expand_limits(y = c(-max(abs(comp3$Upper)), max(abs(comp3$Upper)))) +
+#   theme(
+#     axis.title.y = element_text(margin = margin(t = 0, r = 30, b = 0, l = 0)),
+#     panel.background = element_rect(fill = 'white', colour = 'darkgrey'),
+#     panel.grid.major = element_line(colour = 'white'),
+#     text = element_text(size = 6),
+#     axis.title = element_text(size = 6),
+#     axis.text = element_text(size = 6)
+#   )
+
+
+#old stepAIC code
+# scope <- list(lower = ~ offset(log(n_days_effort) + (1|cluster), upper = ~scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age1) + scale(fire_age4) + scale(tree_shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m)) + offset(log(n_days_effort)) + (1|cluster))
+#                                   
+# 
+# step_trees_shrub_both <- stepAIC(mod_global_sum_trees_2, direction="backward", trace = TRUE, scope = scope)
+# 
+# stepAIC(mod_global_sum_trees_2, direction="backward", trace = TRUE)
+# #stepAIC(mod_global_sum_trees_3, direction="backward", trace = TRUE)
+
+# summary(step_trees_shrub_both)
+# step_trees_shrub_both$anova
+# step_trees_shrub_both
+
+#mod_global_sum_trees_2$anova
+
+#show(mod_global_sum_trees_2)
+
+
+#new
+# Summarising the independent detections by month
+# summarised_month <- wt_summarise_cam(
+#   detect_data = species_ind_data,
+#   raw_data = species_all,
+#   time_interval = "month",
+#   variable = "detections"
+# )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

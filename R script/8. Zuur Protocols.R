@@ -17,6 +17,19 @@ model_variables |>
        y = "Order of the data") +
   theme_bw()
 
+#looking at just fire 
+model_variables |> 
+  mutate(log_esker_camera_distances = as.numeric(esker_camera_distances)) %>%
+  dplyr::select(c( "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4", )) %>%
+  pivot_longer(cols = c("fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4")) |> 
+  ggplot() +
+  geom_point(aes(x = value, y = rep(1:nrow(model_variables), each = n_distinct(name)))) +
+  #geom_point(aes(x = value, y = name)) +
+  facet_wrap(~ name, scales = "free") +
+  labs(x = "Value of the variable",
+       y = "Order of the data") +
+  theme_bw()
+
 #was getting error message from the code above saying: error in 'pivot_longer()': "cant combine 'treed broadleaf' <double> and 'ECO2_NAM_1' <character>. Chatgpt gave me this code: and it seemed to work?
 model_variables |>
   mutate(log_esker_camera_distances = as.numeric(esker_camera_distances)) %>%
@@ -87,4 +100,14 @@ cor_matrix <- cor(numeric_data, use = "complete.obs")
 # Basic plot
 corrplot(cor_matrix, method = "color")
 
+## make correlation matrix for new variables 
+subset2 <- model_variables %>%
+  dplyr::select(32, 33, 34, 2, 3, 4, 5, 6, 8, 25, 28, 29, 11) %>%
+  dplyr::mutate(Predators = as.numeric(Predators))
+
+
+# Compute correlation matrix
+cor_matrix2 <- cor(subset2, use = "complete.obs")
+
+corrplot(cor_matrix2, method = "color")
 
