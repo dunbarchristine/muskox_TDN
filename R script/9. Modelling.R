@@ -13,6 +13,7 @@ library(stringr)
 library(flextable)    
 library(MASS)
 library(car)
+library(dplyr)
 
 
 #making a model set 
@@ -378,19 +379,12 @@ model_variables <- model_variables %>%
 
 #adding all trees together to create new variable called "Trees"
 model_variables <- model_variables %>%
-  mutate(Trees = Treed_conifer + Treed_mixed + Treed_broadleaf)
+  mutate(Trees = `Treed conifer` + `Treed mixed` + `Treed broadleaf`)
 
-#adding fire ages 0 and 1 together to create new variables called Fire_0 (ages 0-20 yrs old)
-model_variables <- model_variables %>%
-  mutate(Fire_0 = fire_age0 + fire_age1)
-
-#adding fire ages 2, 3 and 4 together to create new variables called Fire_1 (21 - > 30, yrs old + unburned)
-model_variables <- model_variables %>%
-  mutate(Fire_1 = fire_age2 + fire_age3 + fire_age4)
 
 ### trying to make output tables 
 # Tidy the model results
-model_results <- tidy(mod_global_sum_shrub, effects = "fixed")
+model_results <- tidy(mod_global, effects = "fixed")
 
 #removing bracket from the variable intercept
 model_results <- model_results %>%
@@ -416,7 +410,15 @@ model_results <- model_results %>%
 
 #renaming TRI Extracted
 model_results <- model_results %>%
-  mutate(term = ifelse(term == "Tri Extracted", "TRI Extracted", term))
+  mutate(term = ifelse(term == "Tri Extracted", "TRI", term))
+
+#renaming ArcticDEM
+model_results <- model_results %>%
+  mutate(term = ifelse(term == "Arctic Dem 500m Elevation M", "Elevation", term))
+
+#renaming esker camera distance
+model_results <- model_results %>%
+  mutate(term = ifelse(term == "Log Esker Camera Distances", "Dist to Esker", term))
 
 # Format table
 flextable_model <- model_results %>%
@@ -427,4 +429,92 @@ flextable_model <- model_results %>%
 # View in RStudio
 flextable_model
 
+
+comp3 <- coefficients_df %>%
+  mutate(Variable = as.character(Variable)) %>%
+  mutate(Variable = dplyr::recode(Variable,
+                                  "scale(log_esker_camera_distances)" = "Distance to Esker",
+                                  "scale(TRI_extracted)" = "TRI",
+                                  "scale(fire_age0)" = "0-10 Years Post Fire",
+                                  "scale(fire_age1)" = "11-20 Years Post Fire",
+                                  "scale(fire_age2)" = "21-30 Years Post Fire",
+                                  "scale(fire_age3)" = "31-50 Years Post Fire",
+                                  "scale(Arctic_DEM_500m_elevation_m)" = "Elevation",
+                                  "scale(Shrub)" = "Shrub",
+                                  "scale(Groundcover)" = "Groundcover",
+                                  "scale(Predators)" = "Predators",
+                                  "scale(Water)" = "Water",
+                                  "(Intercept)"="Intercept"))
+
+#Specify the desired order of categories
+desired_order5 <- c("Distance to Esker",
+                    "TRI",
+                    "0-10 Years Post Fire",
+                    "11-20 Years Post Fire",
+                    "21-30 Years Post Fire",
+                    "31-50 Years Post Fire",
+                    "Elevation",
+                    "Shrub",
+                    "Groundcover",
+                    "Predators",
+                    "Water",
+                    "Intercept")
+
+#Reorder the factor levels in the data frame
+comp3$Variable <- factor(comp3$Variable, levels = desired_order5)
+
+coef_allo <- ggplot(comp3,aes(x=Variable,y=Estimate)) +
+  geom_hline(yintercept = 0, col = "darkgrey") + # Horizontal line at y = 0
+  geom_point() +
+  geom_errorbar(aes(ymin=Lower,ymax=Upper)) +
+  coord_flip() +
+  labs(x= "Variable", y= "Coefficent estimate") +
+  labs(title = "Coefficent Estimates") +
+  theme(
+    axis.title.y = element_text(margin = margin(t = 0, r = 30, b = 0, l = 0)),
+    panel.background = element_rect(fill = 'white', colour = 'darkgrey'),
+    panel.grid.major = element_line(colour = 'white'),
+    text = element_text(size = 6), # Increase overall font size
+    axis.title = element_text(size = 6), # Axis titles
+    axis.text = element_text(size = 6)) # Axis text
+
+#Save the plot (pdf)
+ggsave(
+  filename = "./plots/coef_allo.pdf",
+  plot = coef_allo,
+  device = "pdf", height = 10, width = 17,
+  units = "cm")
+
+#Save the plot (jpeg)
+ggsave(
+  filename = "./plots/coef_allo.jpg",
+  plot = coef_allo,
+  device = "jpg", height = 10, width = 17,
+  units = "cm")
+
+
+
+
+
+
+#plotting coefficients 
+coef_estimates <- ggplot(comp3, aes(x = Variable, y = Estimate)) +
+  geom_hline(yintercept = 0, col = "darkgrey") +
+  geom_point() +
+  geom_errorbar(aes(ymin = Lower, ymax = Upper)) +
+  coord_flip() +
+  labs(
+    x = "Variable",
+    y = "Coefficient estimate",
+    title = "Coefficient Estimates"
+  ) +
+  expand_limits(y = c(-max(abs(comp3$Upper)), max(abs(comp3$Upper)))) +
+  theme(
+    axis.title.y = element_text(margin = margin(t = 0, r = 30, b = 0, l = 0)),
+    panel.background = element_rect(fill = 'white', colour = 'darkgrey'),
+    panel.grid.major = element_line(colour = 'white'),
+    text = element_text(size = 6),
+    axis.title = element_text(size = 6),
+    axis.text = element_text(size = 6)
+  )
 
