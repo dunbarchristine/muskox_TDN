@@ -1,7 +1,7 @@
 library(raster)
 library(tidyverse)
 library(terra)
-
+library(writexl)
 
 #cropping arcticdem to tdn boundary 
 TDN_boundary_projected_ArcticDEM <- st_transform(TDN_boundary, crs = st_crs(ArcticDEM)) %>%
@@ -58,19 +58,47 @@ elevations <- raster::extract(ArcticDEM_cropped, camera_locations)
 esker_camera_distances <- terra::extract(esker_dist, camera_locations)
 TRI_extracted <- raster::extract(TDN_tri_arctic, camera_locations)
 
+camera_locations_df <- camera_locations_df %>%
+  left_join(
+    model_variables %>% dplyr::select(location, TRI_extracted),
+    by = "location"
+  )
+
+all_variables <- all_variables %>%
+  left_join(
+    model_variables %>% dplyr::select(location, TRI_extracted),
+    by = "location"
+  )
+
+
+camera_locations_unique <- camera_locations_df %>%
+  dplyr::select(location, TRI_extracted) %>%
+  distinct(location, .keep_all = TRUE)
+
+all_variables_with_tri <- all_variables %>%
+  left_join(camera_locations_unique, by = "location")
+
+camera_locations_unique2 <- camera_locations_df %>%
+  dplyr::select(location, TRI_extracted) %>%
+  distinct(location, .keep_all = TRUE)
+
+all_variables_with_tri <- all_variables %>%
+  left_join(camera_locations_unique2, by = "location")
+
+
 #adding terrain ruggedness index (TRI) to all_variables
 all_variables_with_tri <- all_variables %>%
-  left_join(camera_locations_df %>% select(location, TRI_extracted), by = "location")
+  left_join(camera_locations_df %>% dplyr::select(location, TRI_extracted), by = "location")
 
 
-#made new dataset that included tri and grizz_per_day and gray_wolf_per_day
-all_variables_with_tri <- all_variables %>%
-  left_join(camera_locations_df %>% select(location, TRI_extracted), by = "location")
+# #made new dataset that included tri and grizz_per_day and gray_wolf_per_day
+# all_variables_with_tri <- all_variables %>%
+#   left_join(camera_locations_df %>% dplyr::select(location, TRI_extracted), by = "location")
 
 #adding new variables to "all_variables_with_tri_and_species". This dataset is used to make model_variables (in 7.model dataset script)
 all_variables_with_tri_and_species <- all_variables_with_tri %>%
-  mutate(grizzly_per_day = grizzly_bear/n_days_effort, 
-         gray_wolf_per_day = gray_wolf/n_days_effort)
+  mutate(grizzly_per_day = grizzly_bear/N_days_effort, 
+         gray_wolf_per_day = gray_wolf/N_days_effort)
 
 
 
@@ -176,10 +204,6 @@ tdn_ecoregions_2 <- cropped_ecoregions_TDN_Boundary %>%
   summarize(geometry = st_union(geometry)) 
 
 
-
-
-
-library(sf)
 # Set the correct CRS (replace with your known EPSG if different)
 st_crs(tdn_ecoregions) <- 32612
 
@@ -233,65 +257,7 @@ model_subset <- all_variables_with_tri_and_species %>% ungroup() %>%
 correlation_matrix <- cor(model_subset, use = "complete.obs")  # Use complete.obs to handle NAs
 corrplot(correlation_matrix, method="circle")
 
-
-
-
-
-
-##herbs
-# Convert the data to long format
-all_variables_long_herbs <- model_variables %>%
-  pivot_longer(cols = starts_with("Herbs"),  # Select all columns starting with "Herbs"
-               names_to = "Herbs",            # New column for the fire age category
-               values_to = "proportion")    # New column for muskox detection
-
-
-#trying to get muskox summary detections in herb land cover with my old code. not working 
-herb_detection_summary <- all_variables_long_herbs %>%
-  group_by(Herbs) %>%
-  summarise(total_detections = sum(proportion > 0, na.rm = TRUE), .groups = "drop") %>%
-  arrange(desc(total_detections))  # Sort by the number of detections
-
-##shrubs
-#trying to get muskox summary detections in shrubs land cover with my old code. not working 
-all_variables_long_shrubs <- model_variables %>%
-  pivot_longer(cols = starts_with("Shrub"),  # Select all columns starting with "fire_age"
-               names_to = "Shrub",            # New column for the fire age category
-               values_to = "proportion")    # New column for muskox detection
-
-# Count the number of muskox detections (where detection > 0) for each fire age
-shrubs_detection_summary <- all_variables_long_shrubs %>%
-  group_by(Shrub) %>%
-  summarise(total_detections = sum(proportion > 0, na.rm = TRUE), .groups = "drop") %>%
-  arrange(desc(total_detections))  # Sort by the number of detections
-
-
-# List of land cover proportion columns
-landcover_vars <- c("Herbs", "Shrub", "Treed_broadleaf", "Treed_conifer", 
-                    "Water", "Bryoid", "Treed_mixed", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4")
-
-# Total number of muskox detections in the dataset
-muskox_total_detections <- sum(model_variables$Muskox, na.rm = TRUE)
-
-# Calculate percentage of detections per land cover type
-muskox_by_landcover_pct <- sapply(landcover_vars, function(var) {
-  sum(model_variables$Muskox[model_variables[[var]] > 0], na.rm = TRUE) / muskox_total_detections * 100
-})
-
-# Convert to a tidy data frame
-muskox_by_landcover_pct <- tibble::enframe(muskox_by_landcover_pct,
-                                           name = "landcover_type",
-                                           value = "percent_of_total_detections")
-
-
-
-
-
-#trying to summarize muskox detections per landcover type
-# Define your landcover columns
-landcover_cols <- c("Groundcover", "Trees", "Shrub", 
-                    "Fire_age0", "Fire_age1", "Fire_age3", "Fire_age2", "Water")
-
+#creating summary table/plots for muskox detections 
 # Filter to rows where Muskox == 1
 detections_only <- model_variables %>%
   st_drop_geometry() %>%
@@ -312,7 +278,7 @@ detections_only %>%
 
 muskox_detections <- model_variables %>%
   st_drop_geometry() %>%
-  drop_na(N_days_effort) %>%
+  #drop_na(N_days_effort) %>%
   group_by(location, cluster, season) %>%
   summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort),
             Shrub = mean(Shrub), 
@@ -332,28 +298,103 @@ muskox_detections <- model_variables %>%
             num_cameras = n(),
             num_cluster = length(unique(cluster)))
 
-
-
+#plotting
 ggplot(muskox_detections, aes(x = landcover_class, y = Muskox_per_month_mean)) +
   geom_point() +
-  geom_pointrange(aes(ymin = Muskox_per_month_mean -sd, ymax = Muskox_per_month_mean +sd)) +
-  facet_wrap(~season)
+  geom_pointrange(aes(ymin = Muskox_per_month_mean - sd, ymax = Muskox_per_month_mean + sd)) +
+  facet_wrap(~season) +
+  labs(
+    x = "Land Cover Class",
+    y = "Average Muskox Detection Per Month"
+  )
 
 
+write_xlsx(muskox_detections, "muskox_detections.xlsx")
+
+#looking at grizzly detections by landcover type
+grizzly_detections <- model_variables %>%
+  st_drop_geometry() %>%
+  #drop_na(N_days_effort) %>%
+  group_by(location, cluster, season) %>%
+  summarise(grizzly_bear = sum(grizzly_bear), N_days_effort = sum(N_days_effort),
+            Shrub = mean(Shrub), 
+            Trees = mean(Trees),
+            Groundcover = mean(Groundcover),
+            Water = mean(Water),
+  ) %>%
+  mutate(grizz_per_month = grizzly_bear/N_days_effort*30) %>%
+  pivot_longer(cols = c("Trees", "Groundcover", "Shrub", "Water"), names_to = "landcover_class", values_to = "proportion") %>%
+  group_by(location, cluster, season) %>%
+  filter(proportion == max(proportion)) %>%
+  group_by(landcover_class, season) %>%
+  summarise(grizzly_bear = sum(grizzly_bear), 
+            N_days_effort = sum(N_days_effort),
+            grizz_per_month_mean = mean(grizz_per_month), 
+            sd = sd(grizz_per_month),
+            num_cameras = n(),
+            num_cluster = length(unique(cluster)))
+
+#plotting
+ggplot(grizzly_detections, aes(x = landcover_class, y = grizz_per_month_mean)) +
+  geom_point() +
+  geom_pointrange(aes(ymin = grizz_per_month_mean - sd, ymax = grizz_per_month_mean + sd)) +
+  facet_wrap(~season) +
+  labs(
+    x = "Land Cover Class",
+    y = "Average Grizzly Detection Per Month"
+  )
+
+#making simple bar grpahs showing grizz detections
+ggplot(grizzly_detections, aes(x = landcover_class, y = grizz_per_month_mean, fill = landcover_class)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  facet_wrap(~season) +
+  labs(
+    title = "Average Monthly Grizzly Bear Detections by Land Cover Class",
+    x = "Dominant Land Cover Class",
+    y = "Mean Grizzly Detections per Month",
+    fill = "Land Cover"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
+write_xlsx(grizzly_detections, "grizzly_detections.xlsx")
 
-# For each landcover column, count how many detections occurred where landcover > 0
-detection_counts <- detections_only %>%
-  summarise(across(all_of(c("Trees", "Groundcover", "Shrub", "fire_age0", "fire_age1", "fire_age3", "fire_age2", "Water")), 
-                   ~ sum(.x > 0, na.rm = TRUE))) %>%
-  pivot_longer(cols = everything(), names_to = "landcover", values_to = "muskox_detections")
+#looking at wolf detections by landcover type
+wolf_detections <- model_variables %>%
+  st_drop_geometry() %>%
+  #drop_na(N_days_effort) %>%
+  group_by(location, cluster, season) %>%
+  summarise(gray_wolf = sum(gray_wolf), N_days_effort = sum(N_days_effort),
+            Shrub = mean(Shrub), 
+            Trees = mean(Trees),
+            Groundcover = mean(Groundcover),
+            Water = mean(Water),
+  ) %>%
+  mutate(wolf_per_month = gray_wolf/N_days_effort*30) %>%
+  pivot_longer(cols = c("Trees", "Groundcover", "Shrub", "Water"), names_to = "landcover_class", values_to = "proportion") %>%
+  group_by(location, cluster, season) %>%
+  filter(proportion == max(proportion)) %>%
+  group_by(landcover_class, season) %>%
+  summarise(gray_wolf = sum(gray_wolf), 
+            N_days_effort = sum(N_days_effort),
+            wolf_per_month_mean = mean(wolf_per_month), 
+            sd = sd(wolf_per_month),
+            num_cameras = n(),
+            num_cluster = length(unique(cluster)))
+
+#plotting
+ggplot(wolf_detections, aes(x = landcover_class, y = wolf_per_month_mean)) +
+  geom_point() +
+  geom_pointrange(aes(ymin = wolf_per_month_mean - sd, ymax = wolf_per_month_mean + sd)) +
+  facet_wrap(~season) +
+  labs(
+    x = "Land Cover Class",
+    y = "Average Gray Wolf Detection Per Month"
+  )
 
 
-print(detection_counts)
-
-
-
+write_xlsx(wolf_detections, "wolf_detections.xlsx")
 
 
 

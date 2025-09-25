@@ -19,7 +19,7 @@ overlap_SCANFI_cameras_table_variables_only <- overlap_SCANFI_cameras_table[, -1
 overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras_table %>%
   dplyr::select(-n) %>%  
   pivot_wider(
-    names_from = cover,  # Create a column for each land cover type
+    names_from = SCANFI_att_nfiLandCover_SW_2020_v1.2,  # Create a column for each land cover type
     values_from = landcover_prop,  # Take values from the 'land_cover_prop' column
     values_fill = list(landcover_prop = 0)  # Fill missing values with 0 (no land cover)
   )
@@ -72,11 +72,22 @@ camera_locations_df <- as.data.frame(camera_locations_df)
 
 
 
-#adding tdn ecoregions to all_variables_with_tri_and_species
-model_variables <- merge(all_variables_with_tri_and_species, 
-                                            camera_locations_df[, c("location")], 
-                                            by = "location", 
-                                          all.x = TRUE) 
+camera_locations_unique3 <- camera_locations_df %>%
+  dplyr::select(location) %>%
+  distinct()
+
+model_variables <- merge(
+  all_variables_with_tri_and_species, 
+  camera_locations_unique3, 
+  by = "location", 
+  all.x = TRUE
+)
+
+#creating model_variables
+# model_variables2 <- merge(all_variables_with_tri_and_species, 
+#                                             camera_locations_df[, c("location")], 
+#                                             by = "location", 
+#                                           all.x = TRUE) 
 #saving model_variables as RDS
 saveRDS(model_variables, "~/Desktop/Analysis/Learning/learning/RDS files/model_variables.rds")
 model_variables <- readRDS("~/Desktop/Analysis/Learning/learning/RDS files/model_variables.rds")
