@@ -153,8 +153,8 @@ coltab <- data.frame(id = 1:8, cover = c("#408A73","#BAD48F","#A8ABAE","#B38A33"
                                          "#148C3D","#003D00","#5C752B","#4C70A3"))
 levels(SCANFI_landcover_cropped) <- cats
 coltab(SCANFI_landcover_cropped) <- coltab
-writeRaster(SCANFI_landcover_cropped, "spatial/SCANFI_landcover_cropped.tif", datatype = "INT1U", overwrite=TRUE)
-SCANFI_landcover_cropped <- rast("spatial/SCANFI_landcover_cropped.tif")
+writeRaster(SCANFI_landcover_cropped, "~/Desktop/Analysis/Learning/learning/Spatial/SCANFI_landcover_cropped.tif", datatype = "INT1U", overwrite=TRUE)
+SCANFI_landcover_cropped <- rast("~/Desktop/Analysis/Learning/learning/Spatial/SCANFI_landcover_cropped.tif")
 
 
 cropped_SCANFI_TDN_Boundary <- crop(SCANFI_landcover_cropped, TDN_boundary, mask = TRUE)
@@ -166,6 +166,24 @@ overlap_SCANFI_cameras <- crosstab(c(Camera_buffer_zones, SCANFI_landcover_cropp
 overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras %>%
   as_tibble() %>%
   group_by(location) %>%
+  mutate(landcover_prop = n/sum(n)) #n is the number of pixels for each habitat type divided by all habitat types 
+
+#dominate landcover types within each buffer
+overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras %>%
+  as_tibble() %>%
+  group_by(location) %>%
+  mutate(landcover_prop = n/sum(n)) #n is the number of pixels for each habitat type divided by all habitat types 
+
+dom_landcover_buffers <- overlap_SCANFI_cameras_table %>%
+  group_by(location) %>%
+  filter(landcover_prop >= max(landcover_prop))
+
+#dom landcovers in TDN
+TDN_boundary_rast <- rasterize(vect(TDN_boundary), SCANFI_landcover_cropped) 
+TDN_dom_landcovers <- crosstab(c(TDN_boundary_rast, SCANFI_landcover_cropped), long = TRUE) 
+
+TDN_landcover_prop <- TDN_dom_landcovers %>%
+  as_tibble() %>%
   mutate(landcover_prop = n/sum(n)) #n is the number of pixels for each habitat type divided by all habitat types 
 
 #loading in esker data

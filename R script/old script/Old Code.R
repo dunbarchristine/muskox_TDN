@@ -1328,20 +1328,144 @@ mod_global_sum_trees_2 <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + s
 
 
 
+#looked erics code for summarizing land cover classifications
+# 
+# landcov_mode <- exact_extract(duc, TDN_boundary, 'mode', 
+#                               append_cols = 'Name', progress = FALSE) %>%
+#   inner_join(duc_classes, by=c(mode = 'value'))
+
+
+## Global Summer Models 
+
+
+```{r GlobalModel, echo=TRUE}
+
+mod_global <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age1) + scale(fire_age4) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
+                        offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
+
+```
+
+
+##herbs
+# Convert the data to long format
+all_variables_long_herbs <- model_variables %>%
+  pivot_longer(cols = starts_with("Herbs"),  # Select all columns starting with "Herbs"
+               names_to = "Herbs",            # New column for the fire age category
+               values_to = "proportion")    # New column for muskox detection
+
+
+#trying to get muskox summary detections in herb land cover with my old code. not working 
+herb_detection_summary <- all_variables_long_herbs %>%
+  group_by(Herbs) %>%
+  summarise(total_detections = sum(proportion > 0, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total_detections))  # Sort by the number of detections
+
+##shrubs
+#trying to get muskox summary detections in shrubs land cover with my old code. not working 
+all_variables_long_shrubs <- model_variables %>%
+  pivot_longer(cols = starts_with("Shrub"),  # Select all columns starting with "fire_age"
+               names_to = "Shrub",            # New column for the fire age category
+               values_to = "proportion")    # New column for muskox detection
+
+# Count the number of muskox detections (where detection > 0) for each fire age
+shrubs_detection_summary <- all_variables_long_shrubs %>%
+  group_by(Shrub) %>%
+  summarise(total_detections = sum(proportion > 0, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total_detections))  # Sort by the number of detections
+
+
+# List of land cover proportion columns
+landcover_vars <- c("Herbs", "Shrub", "Treed_broadleaf", "Treed_conifer", 
+                    "Water", "Bryoid", "Treed_mixed", "fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4")
 
 
 
+#creating summary table/plots for muskox detections 
+# Filter to rows where Muskox == 1
+detections_only <- model_variables %>%
+  st_drop_geometry() %>%
+  group_by(location) %>%
+  summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort), Shrub = mean(Shrub)) %>% 
+  mutate(Muskox_per_month=Muskox/N_days_effort*30, 
+         Shrub_group = case_when(
+           Shrub <= 0.25 ~ 0.125, 
+           Shrub <= 0.5 ~ 0.375,
+           Shrub <= 0.75 ~ 0.625,
+           Shrub <= 1 ~ 0.875
+         ))
+
+detections_only %>%
+  ggplot(aes(x = as.factor(Shrub_group), y = Muskox_per_month)) + 
+  geom_boxplot()
+
+
+muskox_fire_detections1 <- model_variables %>%
+  st_drop_geometry() %>%
+  #drop_na(N_days_effort) %>%
+  group_by(location, cluster, season) %>%
+  summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort),
+            fire_age0 = mean(fire_age0), 
+            fire_age1 = mean(fire_age1),
+            fire_age2 = mean(fire_age2),
+            fire_age3 = mean(fire_age3),
+            fire_age4 = mean(fire_age4),
+  ) %>%
+  mutate(Muskox_per_week = Muskox/N_days_effort*7) %>%
+  pivot_longer(cols = c("fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4"), names_to = "fire_age", values_to = "proportion") %>%
+  group_by(location, cluster, season) %>%
+  filter(proportion == max(proportion)) %>%
+  group_by(fire_age, season) %>%
+  summarise(Muskox = sum(Muskox), 
+            N_days_effort = sum(N_days_effort),
+            Muskox_per_week_mean_log = mean(log(Muskox_per_week + 1/7)), 
+            sd_log = sd(log(Muskox_per_week + 1/7)), 
+            num_cameras = n(),
+            num_cluster = length(unique(cluster))) %>%
+  mutate(Muskox_per_week_mean = exp(Muskox_per_week_mean_log) - 1/7, 
+         upper = exp(Muskox_per_week_mean_log + 1.96 * sd_log) - 1/7,
+         lower = exp(Muskox_per_week_mean_log - 1.96 * sd_log) - 1/7,
+         lower = pmax(lower, 0)) +
+  se = sd / sqrt(num_cameras)   # ✅ Standard Error
 
 
 
+# ##plotting grizz_season_data to create seasonal plots of grizzly frequency of detections (code not running)
+# ggplot() +
+#   tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+#   geom_sf(data=TDN_boundary, fill = NA) +
+#   geom_sf(data = camera_locations, colour = "limegreen", size = 0.5) +
+#   geom_sf(data=grizz_season_data, aes(geometry = geometry, size=grizz_per_week)) +
+#   facet_wrap(~season) +
+#   scale_color_manual(name = "camera", values = c("Camera Location" = "limegreen")) +
+#   theme_minimal() +
+#   theme(
+#     axis.text = element_blank(),
+#     axis.title = element_blank(),
+#     panel.grid.major = element_blank(),
+#     panel.grid.minor = element_blank()) +
+#   ggtitle("Grizzly Bear Frequency of Detections by Landcover Type")
 
 
 
-
-
-
-
-
+#plotting grizzly bear detections by landcover type without plotting all the zeros in dataset
+# ggplot() +
+#   tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+#   geom_sf(data = TDN_boundary, fill = NA) +
+#   geom_sf(data = camera_locations, colour = "limegreen", size = 0.5) +
+#   geom_sf(
+#     data = grizz_season_data %>% filter(grizz_per_week > 0),
+#     aes(geometry = geometry, size = grizz_per_week)
+#   ) +
+#   facet_wrap(~season) +
+#   labs(size = "Grizzly Detection", colour = "Species", fill = "Landcover Type")
+#   theme_minimal() +
+#   theme(
+#     axis.text = element_blank(),
+#     axis.title = element_blank(),
+#     panel.grid.major = element_blank(),
+#     panel.grid.minor = element_blank()
+#   ) +
+#   ggtitle("Grizzly Bear Frequency of Detections by Landcover Type")
 
 
 

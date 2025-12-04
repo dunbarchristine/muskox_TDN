@@ -8,8 +8,6 @@ library(readxl)
 
 fire_data_nbac <- sf::read_sf("~/Desktop/Analysis/Learning/learning/Spatial/shapefiles/NBAC/NBAC_1972to2024_20250506_shp") 
 
-
-
 camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/raw data/Species Raw Data (May 2025)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
   drop_na("longitude") %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
@@ -253,7 +251,9 @@ muskox_fire_detections <- model_variables %>%
             num_cluster = length(unique(cluster))) %>%
   mutate(Muskox_per_week_mean = exp(Muskox_per_week_mean_log) - 1/7, 
          upper = exp(Muskox_per_week_mean_log + 1.96 * sd_log) - 1/7,
-         lower = exp(Muskox_per_week_mean_log - 1.96 * sd_log) - 1/7)
+         lower = exp(Muskox_per_week_mean_log - 1.96 * sd_log) - 1/7,
+         lower = pmax(lower, 0),
+se = sd_log / sqrt(num_cameras))
 
 
 
@@ -266,9 +266,16 @@ ggplot(muskox_fire_detections, aes(x = fire_age, y = Muskox_per_week_mean)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   labs(
-    x = "Fire Age",
+    x = "Years Post Fire",
     y = "Average Muskox Detection Per Week"
-  )
+  )  +
+  scale_x_discrete(labels = c(
+    "fire_age0" = "0–10",
+    "fire_age1" = "11–20",
+    "fire_age2" = "21–30",
+    "fire_age3" = "31–50",
+    "fire_age4" = "Unburned"
+  ))
 
 
 
@@ -292,10 +299,6 @@ ggplot(muskox_fire_detections, aes(x = fire_age, y = Muskox_per_week_mean, fill 
   )) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-
-
-
 
 
 

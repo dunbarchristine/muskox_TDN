@@ -1,4 +1,5 @@
-
+library(lubridate)
+library(ISOweek)
 
 #getting independent detections for muskox, grizzlies, and gray wolves PER season
 
@@ -226,33 +227,33 @@ ggplot() +
 # Example of filtering for each season
 # Filter for each season and select the relevant columns
 
-#creating dataset with season, location and geomtry points
-muskox_season_data<- comb_overlap_SCANFI_and_selected_mammals_week %>%
+#creating dataset with season, location and geomtry points (added season to dataset in script called "season". changed the name slightly to not overwrite the original script, so added a one to the end of the name)
+muskox_season_data<- comb_overlap_SCANFI_and_selected_mammals_week1 %>%
   group_by(season, location) %>%
   summarize(muskox_counts = sum(Muskox), 
-            n_days_effort = sum(n_days_effort),
-            muskox_per_week = muskox_counts/n_days_effort*7) %>%
+            N_days_effort = sum(N_days_effort),
+            muskox_per_week = muskox_counts/N_days_effort*7) %>%
   left_join(camera_locations) %>%
   mutate(season = factor(season, levels = c("Spring", "Summer", "Fall", "Winter")), 
          muskox_per_week = ifelse(muskox_per_week == 0, NA, muskox_per_week))
 
 
 #creating dataset with season, location and geomtry points
-wolf_season_data<- comb_overlap_SCANFI_and_selected_mammals_week %>%
+wolf_season_data<- comb_overlap_SCANFI_and_selected_mammals_week1 %>%
   group_by(season, location) %>%
   summarize(wolf_counts = sum(gray_wolf), 
-            n_days_effort = sum(n_days_effort),
-            wolf_per_week = wolf_counts/n_days_effort*7) %>%
+            N_days_effort = sum(N_days_effort),
+            wolf_per_week = wolf_counts/N_days_effort*7) %>%
   left_join(camera_locations) %>%
   mutate(season = factor(season, levels = c("Spring", "Summer", "Fall", "Winter")), 
          wolf_per_week = ifelse(wolf_per_week == 0, NA, wolf_per_week))
 
-#creating dataset with season, location and geomtry points
-grizz_season_data<- comb_overlap_SCANFI_and_selected_mammals_week %>%
+#creating dataset with season, location and geomtry points (added season to dataset in script called "season". changed the name slightly to not overwrite the original script, so added a one to the end of the name)
+grizz_season_data<- comb_overlap_SCANFI_and_selected_mammals_week1 %>%
   group_by(season, location) %>%
   summarize(grizz_counts = sum(grizzly_bear), 
-            n_days_effort = sum(n_days_effort),
-            grizz_per_week = grizz_counts/n_days_effort*7) %>%
+            N_days_effort = sum(N_days_effort),
+            grizz_per_week = grizz_counts/N_days_effort*7) %>%
   left_join(camera_locations) %>%
   mutate(season = factor(season, levels = c("Spring", "Summer", "Fall", "Winter")), 
          grizz_per_week = ifelse(grizz_per_week == 0, NA, grizz_per_week))
@@ -333,43 +334,6 @@ ggplot() +
     strip.text = element_text(size = 10)
   )
 
-# ##plotting grizz_season_data to create seasonal plots of grizzly frequency of detections (code not running)
-# ggplot() +
-#   tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
-#   geom_sf(data=TDN_boundary, fill = NA) +
-#   geom_sf(data = camera_locations, colour = "limegreen", size = 0.5) +
-#   geom_sf(data=grizz_season_data, aes(geometry = geometry, size=grizz_per_week)) +
-#   facet_wrap(~season) +
-#   scale_color_manual(name = "camera", values = c("Camera Location" = "limegreen")) +
-#   theme_minimal() +
-#   theme(
-#     axis.text = element_blank(),
-#     axis.title = element_blank(),
-#     panel.grid.major = element_blank(),
-#     panel.grid.minor = element_blank()) +
-#   ggtitle("Grizzly Bear Frequency of Detections by Landcover Type")
-
-
-
-#plotting grizzly bear detections by landcover type without plotting all the zeros in dataset
-# ggplot() +
-#   tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
-#   geom_sf(data = TDN_boundary, fill = NA) +
-#   geom_sf(data = camera_locations, colour = "limegreen", size = 0.5) +
-#   geom_sf(
-#     data = grizz_season_data %>% filter(grizz_per_week > 0),
-#     aes(geometry = geometry, size = grizz_per_week)
-#   ) +
-#   facet_wrap(~season) +
-#   labs(size = "Grizzly Detection", colour = "Species", fill = "Landcover Type")
-#   theme_minimal() +
-#   theme(
-#     axis.text = element_blank(),
-#     axis.title = element_blank(),
-#     panel.grid.major = element_blank(),
-#     panel.grid.minor = element_blank()
-#   ) +
-#   ggtitle("Grizzly Bear Frequency of Detections by Landcover Type")
 
 #plotting grizzly bear detections by landcover type without plotting all the zeros in dataset
   ggplot() +
@@ -495,12 +459,12 @@ ggplot() +
   ggtitle("Muskox Frequency of Detections by Fire Age")
 
 # Step 3: Crop the TDN_Boundary using st_intersection
-cropped_TDN_Boundary <- st_intersection(TDN_boundary, nwt_boundary_row7)
+#cropped_TDN_Boundary <- st_intersection(TDN_boundary, nwt_boundary_row7)
 
 ggplot() +
   tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) + 
-  geom_sf(data = camera_locations, color = "red", size = 3) +  
-  geom_sf(data = comb_overlap_SCANFI_and_selected_mammals_week_df$Muskox)
+  geom_sf(data = camera_locations, color = "limegreen", size = 3) +  
+  #geom_sf(data = comb_overlap_SCANFI_and_selected_mammals_week_df$Muskox)
 theme_minimal() +
   theme(
     axis.text = element_blank(),
@@ -853,9 +817,118 @@ ggplot(muskox_counts, aes(x = year_week, y = count)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
+#grizzly plot for histogram 
+#creating new dataset with just grizzly and year_week
+grizzly_year_week <- all_variables %>%
+  dplyr::select(grizzly_bear, year_week)
+
+grizzly_counts <- grizzly_year_week %>%
+  group_by(year_week) %>%
+  summarize(count = sum(grizzly_bear, na.rm = TRUE)) %>%
+  ungroup()
+
+#removing dates after 2022_40
+grizzly_counts <- grizzly_counts %>%
+  filter(year_week >= "2021_29", year_week < "2022_41")
+
+
+ggplot(grizzly_counts, aes(x = year_week, y = count)) +
+  geom_bar(stat = "identity", fill = "cornflowerblue") +
+  labs(title = "Counts of Grizzly Per Week",
+       x = "Week",
+       y = "Weekly Grizzly Bear Detections") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+
+#wolf plot for histogram 
+#creating new dataset with just wolf and year_week
+wolf_year_week <- all_variables %>%
+  dplyr::select(gray_wolf, year_week)
+
+wolf_counts <- wolf_year_week %>%
+  group_by(year_week) %>%
+  summarize(count = sum(gray_wolf, na.rm = TRUE)) %>%
+  ungroup()
+
+#removing dates after 2022_40
+wolf_counts <- wolf_counts %>%
+  filter(year_week >= "2021_29", year_week < "2022_41")
+
+
+ggplot(wolf_counts, aes(x = year_week, y = count)) +
+  geom_bar(stat = "identity", fill = "cornflowerblue") +
+  labs(title = "Counts of Wolf Per Week",
+       x = "Week",
+       y = "Weekly Gray Wolf Detections") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+#predator plot for histogram 
+#adding predator column from "model_variables" to "all_variables"
+# Step 1: Reduce model_variables to one row per location
+install.packages("ISOweek")  # if not already installed
+library(ISOweek)
+
+model_variables1 <- model_variables %>%
+  mutate(
+    # Create "YYYY-Www" format string
+    year_week = paste0(year, "-W", sprintf("%02d", week)),
+    
+    # Convert "YYYY-Www" to actual date (Monday of that week)
+    week_start = ISOweek2date(paste0(year_week, "-1"))
+  )
+
+
+predators_by_week_location <- model_variables1 %>%
+  group_by(location, year_week, week_start) %>%
+  summarise(total_predators = sum(Predators, na.rm = TRUE), .groups = "drop")
 
 
 
+# Step 2: Join to all_variables
+all_variables1 <- all_variables %>%
+  mutate(
+    week_num = as.numeric(week),                            # convert character to numeric
+    year_week = paste0(year, "-W", sprintf("%02d", week_num))  # format with leading zero
+  ) %>%
+  select(-week_num)  # optionally remove helper column
+
+
+all_variables1 <- all_variables1 %>%
+  left_join(predators_by_week_location, by = c("location", "year_week"))
+
+week_dates <- predators_by_week_location %>%
+  select(year_week, week_start) %>%
+  distinct()
+
+predator_counts <- predators_by_week_location %>%
+  group_by(year_week) %>%
+  summarize(count = sum(total_predators, na.rm = TRUE)) %>%
+  ungroup()
+
+# Add week_start date to predator_counts by joining with predators_by_week_location
+predator_counts <- predator_counts %>%
+  left_join(
+    predators_by_week_location %>% select(year_week, week_start),
+    by = "year_week"
+  )
+
+#removing dates after 2022_40
+predator_counts <- predator_counts %>%
+  filter(year_week >= "2021-W29", year_week < "2022-W41")
+
+predator_counts <- predator_counts %>%
+  filter(year_week >= "2021-W29", year_week <= "2022-W34")
+
+
+ggplot(predator_counts, aes(x = year_week, y = count)) +
+  geom_bar(stat = "identity", fill = "cornflowerblue") +
+  labs(title = "Counts of Predators Per Week",
+       x = "Week",
+       y = "Weekly Predator Detections") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 
 
