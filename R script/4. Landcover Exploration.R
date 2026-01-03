@@ -2,6 +2,8 @@ library(raster)
 library(tidyverse)
 library(terra)
 library(writexl)
+library(ggplot2)
+library(gridExtra)
 
 #cropping arcticdem to tdn boundary 
 TDN_boundary_projected_ArcticDEM <- st_transform(TDN_boundary, crs = st_crs(ArcticDEM)) %>%
@@ -215,20 +217,26 @@ model_variables_joined <- st_join(model_variables, tdn_ecoregions, left = TRUE)
 
 
 
-#plotting map of tdn ecoregions
+#plotting map of tdn ecoregions and camera locations
+
 ggplot(data = tdn_ecoregions_2) +
   geom_sf(aes(fill = ECO2_NAM_1), color = "black", size = 0.2) +
+  geom_sf(
+    data = camera_locations,
+    color = "red",
+    size = 2
+  ) +
   scale_fill_manual(
     name = "TDN Ecoregions",
-    values = c("darkseagreen", "burlywood")
+    values = c("burlywood", "darkseagreen")
   ) +
   theme_minimal() +
   theme(
     axis.text = element_blank(),
     axis.title = element_blank(),
     panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank())
-wd
+    panel.grid.minor = element_blank()
+  )
 
 
 #Calculating the Ecoregion for each Camera location
@@ -616,7 +624,7 @@ ggplot(TRI_prediction, aes(x = TRI_extracted_new,
   geom_line(size=1) + # scatter plot
   geom_rug(
     data = model_variables,
-    aes(x = TRI_extracted, y = 0),
+    aes(x = TRI_extracted, y = 0.12),
     inherit.aes = FALSE,
     sides = "b",
     alpha = 0.3,
@@ -666,6 +674,52 @@ ggplot(Shrub_prediction, aes(x = Shrub_new,
   ) +
   theme_minimal()
 
+#trying to put all these prediction plots into one image
+###
+all_predictions <- bind_rows(
+  predators_prediction %>%
+    mutate(
+      x = Predators_new,
+      predictor = "Number of Predators"
+    ) %>%
+    dplyr::select(x, predicted_muskox_week, predictor),
+  
+  TRI_prediction %>%
+    mutate(
+      x = TRI_extracted_new,
+      predictor = "Terrain Ruggedness Index"
+    ) %>%
+    dplyr::select(x, predicted_muskox_week, predictor),
+  
+  Shrub_prediction %>%
+    mutate(
+      x = Shrub_new,
+      predictor = "Shrub Land Cover"
+    ) %>%
+    dplyr::select(x, predicted_muskox_week, predictor)
+)
+
+#plotting all predictions together 
+ggplot(all_predictions, aes(x = x, y = predicted_muskox_week)) +
+  geom_line(size = 1) +
+  facet_wrap(
+    ~ predictor,
+    scales = "free_x",
+    nrow = 1,
+    strip.position = "bottom"
+  ) +
+  labs(
+    x = NULL,
+    y = "Predicted Muskox Detections per Week"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.placement = "outside",
+    strip.text = element_text(size = 14, face = "bold"),
+    axis.title.y = element_text(size = 18)
+  )
+
+
 
 SCANFI_landcover_cropped <- rast("spatial/SCANFI_landcover_cropped.tif")
 
@@ -709,6 +763,13 @@ overlap_SCANFI_cameras_table <- overlap_SCANFI_cameras %>%
   group_by(location) %>%
   mutate(landcover_prop = n/sum(n)) #n is the number of pixels for each habitat type divided by all habitat types 
 
+# Ecoregions
+TDN_ecoregions_2 <- readRDS("Data/Raw/Ecoregions/TDN_ecoregions.rds") %>%
+  group_by(ECO2_NAM_1) %>%
+  dplyr::summarise(geometry = st_union(geometry)) # Combine geometries per group
+
+TDN_ecoregions <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/FMD_NWT_EcoRegions.shp")
+  
 
 
 

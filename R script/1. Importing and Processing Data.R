@@ -178,7 +178,7 @@ dom_landcover_buffers <- overlap_SCANFI_cameras_table %>%
   group_by(location) %>%
   filter(landcover_prop >= max(landcover_prop))
 
-#dom landcovers in TDN
+#dom landcovers in TDN 
 TDN_boundary_rast <- rasterize(vect(TDN_boundary), SCANFI_landcover_cropped) 
 TDN_dom_landcovers <- crosstab(c(TDN_boundary_rast, SCANFI_landcover_cropped), long = TRUE) 
 

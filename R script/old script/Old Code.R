@@ -1176,7 +1176,7 @@ mod_global_all_5 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(log_esker_came
 
 
 
-#fire_rast_cropped_TDN <- crop(fire_rast, TDN_boundary, mask = TRUE)
+
 
 mod_global_sum_shrubs_trees <- glmmTMB(Muskox ~ scale(fire_age1) + scale(log_esker_camera_distances) + scale(fire_age3) + scale(fire_age0) + scale(fire_age2) + scale(Trees) + scale(Shrub) + scale(Groundcover) + scale(Predators) + scale(Water) + scale(TRI_extracted) + scale(Arctic_DEM_500m_elevation_m) +
                                          offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer")) 
@@ -1277,25 +1277,25 @@ mod_global_sum_trees_2 <- glmmTMB(Muskox ~ scale(log_esker_camera_distances) + s
 #                                   offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Summer" )%>% mutate(tree_shrub = Trees - Shrub)) 
 
 
-# coef_estimates <- ggplot(comp3, aes(x = Variable, y = Estimate)) +
-#   geom_hline(yintercept = 0, col = "darkgrey") +
-#   geom_point() +
-#   geom_errorbar(aes(ymin = Lower, ymax = Upper)) +
-#   coord_flip() +
-#   labs(
-#     x = "Variable",
-#     y = "Coefficient estimate",
-#     title = "Coefficient Estimates"
-#   ) +
-#   expand_limits(y = c(-max(abs(comp3$Upper)), max(abs(comp3$Upper)))) +
-#   theme(
-#     axis.title.y = element_text(margin = margin(t = 0, r = 30, b = 0, l = 0)),
-#     panel.background = element_rect(fill = 'white', colour = 'darkgrey'),
-#     panel.grid.major = element_line(colour = 'white'),
-#     text = element_text(size = 6),
-#     axis.title = element_text(size = 6),
-#     axis.text = element_text(size = 6)
-#   )
+coef_estimates <- ggplot(comp3, aes(x = Variable, y = Estimate)) +
+  geom_hline(yintercept = 0, col = "darkgrey") +
+  geom_point() +
+  geom_errorbar(aes(ymin = Lower, ymax = Upper)) +
+  coord_flip() +
+  labs(
+    x = "Variable",
+    y = "Coefficient estimate",
+    title = "Coefficient Estimates"
+  ) +
+  expand_limits(y = c(-max(abs(comp3$Upper)), max(abs(comp3$Upper)))) +
+  theme(
+    axis.title.y = element_text(margin = margin(t = 0, r = 30, b = 0, l = 0)),
+    panel.background = element_rect(fill = 'white', colour = 'darkgrey'),
+    panel.grid.major = element_line(colour = 'white'),
+    text = element_text(size = 6),
+    axis.title = element_text(size = 6),
+    axis.text = element_text(size = 6)
+  )
 
 
 #old stepAIC code
@@ -1380,101 +1380,175 @@ landcover_vars <- c("Herbs", "Shrub", "Treed_broadleaf", "Treed_conifer",
 
 
 
-#creating summary table/plots for muskox detections 
-# Filter to rows where Muskox == 1
-detections_only <- model_variables %>%
-  st_drop_geometry() %>%
-  group_by(location) %>%
-  summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort), Shrub = mean(Shrub)) %>% 
-  mutate(Muskox_per_month=Muskox/N_days_effort*30, 
-         Shrub_group = case_when(
-           Shrub <= 0.25 ~ 0.125, 
-           Shrub <= 0.5 ~ 0.375,
-           Shrub <= 0.75 ~ 0.625,
-           Shrub <= 1 ~ 0.875
-         ))
+images <- wt_download_report(project_id = 712, sensor_id = 'CAM', reports = "main", weather_cols = F) %>%
+  tibble::as_tibble()
 
-detections_only %>%
-  ggplot(aes(x = as.factor(Shrub_group), y = Muskox_per_month)) + 
-  geom_boxplot()
-
-
-muskox_fire_detections1 <- model_variables %>%
-  st_drop_geometry() %>%
-  #drop_na(N_days_effort) %>%
-  group_by(location, cluster, season) %>%
-  summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort),
-            fire_age0 = mean(fire_age0), 
-            fire_age1 = mean(fire_age1),
-            fire_age2 = mean(fire_age2),
-            fire_age3 = mean(fire_age3),
-            fire_age4 = mean(fire_age4),
-  ) %>%
-  mutate(Muskox_per_week = Muskox/N_days_effort*7) %>%
-  pivot_longer(cols = c("fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4"), names_to = "fire_age", values_to = "proportion") %>%
-  group_by(location, cluster, season) %>%
-  filter(proportion == max(proportion)) %>%
-  group_by(fire_age, season) %>%
-  summarise(Muskox = sum(Muskox), 
-            N_days_effort = sum(N_days_effort),
-            Muskox_per_week_mean_log = mean(log(Muskox_per_week + 1/7)), 
-            sd_log = sd(log(Muskox_per_week + 1/7)), 
-            num_cameras = n(),
-            num_cluster = length(unique(cluster))) %>%
-  mutate(Muskox_per_week_mean = exp(Muskox_per_week_mean_log) - 1/7, 
-         upper = exp(Muskox_per_week_mean_log + 1.96 * sd_log) - 1/7,
-         lower = exp(Muskox_per_week_mean_log - 1.96 * sd_log) - 1/7,
-         lower = pmax(lower, 0)) +
-  se = sd / sqrt(num_cameras)   # ✅ Standard Error
+#Authenticate in WildTrax
+Sys.setenv(WT_USERNAME = 'christinedunbar3@gmail.com', WT_PASSWORD = 'Theweeknd88!')
+wt_auth()
 
 
 
-# ##plotting grizz_season_data to create seasonal plots of grizzly frequency of detections (code not running)
-# ggplot() +
-#   tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
-#   geom_sf(data=TDN_boundary, fill = NA) +
-#   geom_sf(data = camera_locations, colour = "limegreen", size = 0.5) +
-#   geom_sf(data=grizz_season_data, aes(geometry = geometry, size=grizz_per_week)) +
-#   facet_wrap(~season) +
-#   scale_color_manual(name = "camera", values = c("Camera Location" = "limegreen")) +
+
+TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN_DEM.tif") 
+
+#load data
+TDN_DEM<- terra::rast("~/Desktop/Analysis/Learning/learning/Spatial/TDN_DEM/Copernicus_TDN_DEM.tif")
+
+
+adding_variables_elevations_eskers <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
+                                            camera_locations_df[, c("location", "Arctic_DEM_500m_elevation_m", "esker_camera_distances")], 
+                                            by = "location", 
+                                            all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
+
+# Count the number of muskox detections (where detection > 0) for each fire age
+muskox_fire_age_detection_summary <- all_variables_long %>%
+  group_by(fire_age) %>%
+  summarise(total_detections = sum(proportion > 0, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total_detections))  # Sort by the number of detections
+
+
+predators_plot <- predators_prediction %>%
+  transmute(
+    x = Predators_new,
+    predicted_muskox_week,
+    predictor = "Predators"
+  )
+
+TRI_plot <- TRI_prediction %>%
+  transmute(
+    x = TRI_extracted_new,
+    predicted_muskox_week,
+    predictor = "Terrain Ruggedness Index"
+  )
+
+Shrub_plot <- Shrub_prediction %>%
+  transmute(
+    x = Shrub_new,
+    predicted_muskox_week,
+    predictor = "Shrub Cover"
+  )
+
+All_predictions <- bind_rows(
+  predators_plot,
+  TRI_plot,
+  Shrub_plot
+)
+
+#removing dates after 2022_40
+muskox_counts <- muskox_counts %>%
+  filter(year_week >= "2021_29", year_week < "2022_41")
+
+#plot it
+ggplot(muskox_counts, aes(x = year_week, y = count)) +
+  geom_bar(stat = "identity", fill = "cornflowerblue") +
+  labs(title = "Counts of Muskox Per Week",
+       x = "Week",
+       y = "Weekly Muskox Detections") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+
+# Create the histogram plot
+# ggplot(muskox_year_week, aes(x = year_week, y = count, fill = Muskox)) +
+#   geom_bar(stat = "identity", position = "dodge") +
+#   labs(title = "Counts of Muskox Per Week",
+#        x = "Week",
+#        y = "Weekly Muskox Detections Per Total Trigger") +
+#   facet_wrap(~species, nrow  = 2) +
 #   theme_minimal() +
-#   theme(
-#     axis.text = element_blank(),
-#     axis.title = element_blank(),
-#     panel.grid.major = element_blank(),
-#     panel.grid.minor = element_blank()) +
-#   ggtitle("Grizzly Bear Frequency of Detections by Landcover Type")
+#   scale_fill_manual(values = c("Muskox" = "cornflowerblue", 
+#                                )) +
+#   theme(legend.title = element_blank()) +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+subset2 <- model_variables %>%
+  dplyr::select(32, 33, 2, 3, 4, 5, 6, 8, 25, 28, 29, 11) %>%
+  dplyr::mutate(Predators = as.numeric(Predators))
 
 
 
-#plotting grizzly bear detections by landcover type without plotting all the zeros in dataset
-# ggplot() +
-#   tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
-#   geom_sf(data = TDN_boundary, fill = NA) +
-#   geom_sf(data = camera_locations, colour = "limegreen", size = 0.5) +
-#   geom_sf(
-#     data = grizz_season_data %>% filter(grizz_per_week > 0),
-#     aes(geometry = geometry, size = grizz_per_week)
-#   ) +
-#   facet_wrap(~season) +
-#   labs(size = "Grizzly Detection", colour = "Species", fill = "Landcover Type")
-#   theme_minimal() +
-#   theme(
-#     axis.text = element_blank(),
-#     axis.title = element_blank(),
-#     panel.grid.major = element_blank(),
-#     panel.grid.minor = element_blank()
-#   ) +
-#   ggtitle("Grizzly Bear Frequency of Detections by Landcover Type")
+# Ensure both raster and boundary have the same CRS
+SCANFI_landcover_cropped <- terra::mask(SCANFI_landcover_cropped, vect(TDN_boundary))
 
 
+names(SCANFI_landcover_cropped) <- "landcover"
 
+SCANFI_landcover_cropped <- terra::as.factor(SCANFI_landcover_cropped)
 
+levels(SCANFI_landcover_cropped) <- data.frame(
+  value = 1:8,
+  landcover = c(
+    "Bryoid",
+    "Herbs",
+    "Rock",
+    "Shrub",
+    "Treed broadleaf",
+    "Treed conifer",
+    "Treed mixed",
+    "Water"
+  )
+)
 
+landcover_cols <- c(
+  "Bryoid" = "#408A73",
+  "Herbs" = "#BAD48F",
+  "Rock" = "#A8ABAE",
+  "Shrub" = "#B38A33",
+  "Treed broadleaf" = "#148C3D",
+  "Treed conifer" = "#003D00",
+  "Treed mixed" = "#5C752B",
+  "Water" = "#4C70A3"
+)
 
-
-
-
+ggplot() +
+  tidyterra::geom_spatraster(
+    data = SCANFI_landcover_cropped,
+    aes(fill = landcover)
+  ) +
+  geom_sf(
+    data = TDN_boundary,
+    fill = NA,
+    colour = "red",   # or "black"
+    size = 1,         # thicker line
+    inherit.aes = FALSE
+  ) +
+  geom_sf(
+    data = muskox_season_data %>% filter(muskox_per_week > 0),
+    aes(size = muskox_per_week, colour = "Muskox")
+  ) +
+  geom_sf(
+    data = grizz_season_data %>% filter(grizz_per_week > 0),
+    aes(size = grizz_per_week, colour = "Grizzly Bear")
+  ) +
+  geom_sf(
+    data = wolf_season_data %>% filter(wolf_per_week > 0),
+    aes(size = wolf_per_week, colour = "Gray Wolf")
+  ) +
+  
+  scale_fill_manual(
+    name = "Landcover Type",
+    values = landcover_cols
+  ) +
+  scale_colour_manual(
+    name = "Species",
+    values = c(
+      "Muskox" = "aquamarine",
+      "Grizzly Bear" = "yellow2",
+      "Gray Wolf" = "orchid1"
+    )
+  ) +
+  
+  facet_wrap(~season) +
+  labs(size = "Species Detection Per Week") +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  ggtitle("Species Frequency of Detections by Landcover Type")
 
 
 
