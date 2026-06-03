@@ -1551,8 +1551,321 @@ ggplot() +
   ggtitle("Species Frequency of Detections by Landcover Type")
 
 
+# ##plotting grizz_season_data to create seasonal plots of grizzly frequency of detections (code not running)
+# ggplot() +
+#   tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+#   geom_sf(data=TDN_boundary, fill = NA) +
+#   geom_sf(data = camera_locations, colour = "limegreen", size = 0.5) +
+#   geom_sf(data=grizz_season_data, aes(geometry = geometry, size=grizz_per_week)) +
+#   facet_wrap(~season) +
+#   scale_color_manual(name = "camera", values = c("Camera Location" = "limegreen")) +
+#   theme_minimal() +
+#   theme(
+#     axis.text = element_blank(),
+#     axis.title = element_blank(),
+#     panel.grid.major = element_blank(),
+#     panel.grid.minor = element_blank()) +
+#   ggtitle("Grizzly Bear Frequency of Detections by Landcover Type")
 
 
+
+#plotting grizzly bear detections by landcover type without plotting all the zeros in dataset
+# ggplot() +
+#   tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+#   geom_sf(data = TDN_boundary, fill = NA) +
+#   geom_sf(data = camera_locations, colour = "limegreen", size = 0.5) +
+#   geom_sf(
+#     data = grizz_season_data %>% filter(grizz_per_week > 0),
+#     aes(geometry = geometry, size = grizz_per_week)
+#   ) +
+#   facet_wrap(~season) +
+#   labs(size = "Grizzly Detection", colour = "Species", fill = "Landcover Type")
+#   theme_minimal() +
+#   theme(
+#     axis.text = element_blank(),
+#     axis.title = element_blank(),
+#     panel.grid.major = element_blank(),
+#     panel.grid.minor = element_blank()
+#   ) +
+#   ggtitle("Grizzly Bear Frequency of Detections by Landcover Type")
+
+#plotting grizzly bear detections by landcover type without plotting all the zeros in dataset
+#   ggplot() +
+#     tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+#     geom_sf(data = TDN_boundary, fill = NA) +
+#     geom_sf(data = camera_locations, colour = "limegreen", size = 0.5) +
+#     geom_sf(
+#       data = grizz_season_data %>% filter(grizz_per_week > 0),
+#       aes(geometry = geometry, size = grizz_per_week)
+#     ) +
+#     facet_wrap(~season) +
+#     labs(
+#       size = "Grizzly Detection", 
+#       colour = "Species", 
+#       fill = "Landcover Type",
+#       title = "Grizzly Bear Frequency of Detections by Landcover Type"
+#     ) +
+#     theme_void() +  # << cleanest background, no axes, ticks, or grids
+#     theme(
+#       plot.title.position = "plot",  # puts title above everything cleanly
+#       plot.title = element_text(
+#         hjust = 0,                  # center the title
+#         size = 14,                    # optional: adjust title size
+#         #face = "bold",               # optional: bold title
+#         margin = margin(b = 10)      # adds space *below* the title
+#       ),
+#       strip.background = element_blank(),
+#       strip.text = element_text(size = 10)
+#     )
+# 
+# #trying to plot everything
+# ggplot() +
+#   tidyterra::geom_spatraster(data = cropped_SCANFI_TDN_Boundary) +
+#   geom_sf(data = TDN_boundary, fill = NA) +
+#   #geom_sf(data = camera_locations, colour = "limegreen", size = 0.5) +
+#   # Plot muskox detections
+#   geom_sf(data = muskox_season_data %>% filter(muskox_per_week > 0),
+#           aes(geometry = geometry, size = muskox_per_week, colour ="Muskox")) +
+#   # Plot grizzly detections (only where > 0)
+#   geom_sf(data = grizz_season_data %>% filter(grizz_per_week > 0),
+#           aes(geometry = geometry, size = grizz_per_week, colour ="Grizzly Bear")) +
+#   # Plot wolf detections
+#   geom_sf(data = wolf_season_data %>% filter(wolf_per_week > 0),
+#           aes(geometry = geometry, size = wolf_per_week, colour ="Gray Wolf")) +
+#    scale_colour_manual(values = c("aquamarine", "yellow2", "orchid1")) +       
+#   
+#   facet_wrap(~season) +
+#   #scale_color_manual(name = "camera", values = c("" = "limegreen")) +
+#   labs(size = "Species Detection Per Week", colour = "Species", fill = "Landcover Type") + 
+#   theme_minimal() +
+#   theme(
+#     axis.text = element_blank(),
+#     axis.title = element_blank(),
+#     panel.grid.major = element_blank(),
+#     panel.grid.minor = element_blank(),
+#   ) +
+#   ggtitle("Species Frequency of Detections by Landcover Type")
+
+# --- 1. Mask raster to study area ---
+SCANFI_landcover_cropped <- terra::mask(SCANFI_landcover_cropped, vect(TDN_boundary))
+
+# --- 2. Ensure raster is single-layer numeric ---
+SCANFI_landcover_cropped <- SCANFI_landcover_cropped[[1]]
+
+# --- 3. Convert to factor and assign levels ---
+SCANFI_landcover_cropped <- terra::as.factor(SCANFI_landcover_cropped)
+levels(SCANFI_landcover_cropped) <- data.frame(
+  value = 1:8,
+  landcover = c("Bryoid","Herbs","Rock","Shrub","Treed broadleaf",
+                "Treed conifer","Treed mixed","Water")
+)
+
+# --- 4. Species data as sf ---
+muskox_season_data <- muskox_season_data %>% ungroup() %>% st_as_sf()
+grizz_season_data <- grizz_season_data %>% ungroup() %>% st_as_sf()
+wolf_season_data  <- wolf_season_data %>% ungroup() %>% st_as_sf()
+
+# --- 5. Landcover colors ---
+landcover_cols <- c(
+  "Bryoid" = "#408A73",
+  "Herbs" = "#BAD48F",
+  "Rock" = "#A8ABAE",
+  "Shrub" = "#B38A33",
+  "Treed broadleaf" = "#148C3D",
+  "Treed conifer" = "#003D00",
+  "Treed mixed" = "#5C752B",
+  "Water" = "#4C70A3"
+)
+
+# --- 6. Plot ---
+ggplot() +
+  # Raster
+  tidyterra::geom_spatraster(
+    data = SCANFI_landcover_cropped,
+    aes(fill = landcover),
+    alpha = 1
+  ) +
+  # Study area boundary
+  geom_sf(
+    data = TDN_boundary,
+    fill = NA,
+    colour = "transparent",
+    size = 1,
+    inherit.aes = FALSE
+  ) +
+  # Muskox points
+  geom_sf(
+    data = muskox_season_data %>% filter(muskox_per_week > 0),
+    aes(size = muskox_per_week, colour = "Muskox"),
+    inherit.aes = FALSE
+  ) +
+  # Grizzly points
+  geom_sf(
+    data = grizz_season_data %>% filter(grizz_per_week > 0),
+    aes(size = grizz_per_week, colour = "Grizzly Bear"),
+    inherit.aes = FALSE
+  ) +
+  # Wolf points
+  geom_sf(
+    data = wolf_season_data %>% filter(wolf_per_week > 0),
+    aes(size = wolf_per_week, colour = "Gray Wolf"),
+    inherit.aes = FALSE
+  ) +
+  # Landcover colours
+  scale_fill_manual(
+    name = "Landcover Type",
+    values = landcover_cols,
+    na.value = "transparent"
+  ) +
+  # Species colours (Grey vs Gray fixed in legend)
+  scale_colour_manual(
+    name = "Species",
+    values = c(
+      "Muskox" = "limegreen",
+      "Grizzly Bear" = "red",
+      "Gray Wolf" = "blue"
+    ),
+    labels = c(
+      "Muskox" = "Muskox",
+      "Grizzly Bear" = "Grizzly Bear",
+      "Gray Wolf" = "Grey Wolf"
+    )
+  ) +
+  # Bigger legend symbols for points
+  guides(
+    colour = guide_legend(
+      override.aes = list(size = 5)
+    )
+  ) +
+  # Facets
+  facet_wrap(~season) +
+  # Labels
+  labs(size = "Species Detection Per Week") +
+  # Limit plotting area to TDN boundary
+  coord_sf(
+    xlim = st_bbox(TDN_boundary)[c("xmin", "xmax")],
+    ylim = st_bbox(TDN_boundary)[c("ymin", "ymax")],
+    expand = FALSE
+  ) +
+  # Theme
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    strip.text = element_text(size = 14)
+  )
+
+library(ggplot2)
+library(tidyterra)
+library(dplyr)
+library(sf)
+library(grid)  # for unit()
+
+# Rename raster layer to match the fill aesthetic
+names(SCANFI_landcover_cropped) <- "landcover"
+
+# Make raster layer easier to work with
+names(SCANFI_landcover_cropped) <- "cover"
+
+ggplot() +
+  # Raster
+  tidyterra::geom_spatraster(
+    data = SCANFI_landcover_cropped,
+    aes(fill = cover),
+    alpha = 1
+  ) +
+  
+  # TDN boundary
+  geom_sf(
+    data = TDN_boundary,
+    fill = NA,
+    colour = "black",
+    size = 0.4
+  ) +
+  
+  # Muskox points
+  geom_sf(
+    data = muskox_season_data %>% filter(muskox_per_week > 0),
+    aes(size = muskox_per_week, colour = "Muskox")
+  ) +
+  
+  # Grizzly points
+  geom_sf(
+    data = grizz_season_data %>% filter(grizz_per_week > 0),
+    aes(size = grizz_per_week, colour = "Grizzly Bear")
+  ) +
+  
+  # Wolf points
+  geom_sf(
+    data = wolf_season_data %>% filter(wolf_per_week > 0),
+    aes(size = wolf_per_week, colour = "Gray Wolf")
+  ) +
+  
+  # Landcover colors
+  scale_fill_manual(
+    name = "Landcover Type",
+    values = landcover_cols,
+    na.value = "transparent"
+  ) +
+  
+  # Species colors
+  scale_colour_manual(
+    name = "Species",
+    values = c(
+      "Muskox" = "limegreen",
+      "Grizzly Bear" = "red",
+      "Gray Wolf" = "blue"
+    ),
+    labels = c(
+      "Muskox" = "Muskox",
+      "Grizzly Bear" = "Grizzly Bear",
+      "Gray Wolf" = "Grey Wolf"
+    )
+  ) +
+  
+  # Bigger legend dots and more compact spacing
+  guides(
+    colour = guide_legend(
+      override.aes = list(size = 5),
+      keyheight = unit(0.6, "cm")
+    ),
+    fill = guide_legend(
+      keyheight = unit(0.6, "cm")
+    ),
+    size = guide_legend(
+      keyheight = unit(0.6, "cm")
+    )
+  ) +
+  
+  # Facets
+  facet_wrap(~season) +
+  
+  # Size legend title
+  labs(size = "Average Species Detections Per Week") +
+  
+  # Limit plotting area
+  coord_sf(
+    xlim = st_bbox(TDN_boundary)[c("xmin", "xmax")],
+    ylim = st_bbox(TDN_boundary)[c("ymin", "ymax")],
+    expand = FALSE
+  ) +
+  
+  # Theme
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.title = element_text(size = 11),
+    legend.text = element_text(size = 10),
+    legend.spacing.y = unit(0.2, "cm"),
+    strip.text = element_text(size = 14)
+  )
 
 
 

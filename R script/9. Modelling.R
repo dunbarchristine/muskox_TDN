@@ -241,27 +241,27 @@ mod_global_sum_5.2 <- glmmTMB(Muskox ~ scale(`Treed_mixed`) + scale(fire_age1) +
 
 
 #making more winter models, most with just one variable. Similar to what I did with the summer models----
-mod_null_win_1 <- glmmTMB(Muskox ~ 1+ offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables  %>% filter(season == "Winter"))
+mod_null_win_1 <- glmmTMB(Muskox ~ 1+ offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables  %>% filter(season == "Winter"))
 
 #winter predation
-mod_pred_win_2 <- glmmTMB(Muskox ~ scale(grizzly_bear) + scale(gray_wolf) + offset(log(n_days_effort)) + (1|cluster),
+mod_pred_win_2 <- glmmTMB(Muskox ~ scale(grizzly_bear) + scale(gray_wolf) + offset(log(N_days_effort)) + (1|cluster),
                           family="nbinom2", data = model_variables %>% filter(season == "Winter")) #both grizz and wolf
 
-mod_pred_win_2.1 <-  glmmTMB(Muskox ~ scale(grizzly_bear) + offset(log(n_days_effort)) + (1|cluster),
+mod_pred_win_2.1 <-  glmmTMB(Muskox ~ scale(grizzly_bear) + offset(log(N_days_effort)) + (1|cluster),
                              family="nbinom2", data = model_variables %>% filter(season == "Winter")) #grizzly bear only
 
-mod_pred_win_2.2 <- glmmTMB(Muskox ~ scale(gray_wolf) + offset(log(n_days_effort)) + (1|cluster),
+mod_pred_win_2.2 <- glmmTMB(Muskox ~ scale(gray_wolf) + offset(log(N_days_effort)) + (1|cluster),
                             family="nbinom2", data = model_variables %>% filter(season == "Winter")) #gray wolf only
 
 #winter food
 mod_food_win_3 <- glmmTMB(Muskox ~ scale(Shrub) + scale(`Treed_broadleaf`) + scale(Bryoid) + scale(Herbs) + scale(fire_age1) + scale(fire_age2) + scale(fire_age3) + scale(fire_age0) +
-                            offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Winter")) 
+                            offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Winter")) 
 
 mod_food_win_3.1 <- glmmTMB(Muskox ~ scale(Shrub) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Winter")) #running model with just shrub variable (estimate: -0.25)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Winter")) #running model with just shrub variable (estimate: -0.25)
 
 mod_food_win_3.2 <- glmmTMB(Muskox ~ scale(Herbs) +
-                              offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Winter")) #running model with just herbs variable (estimate: 0.078)
+                              offset(log(N_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Winter")) #running model with just herbs variable (estimate: 0.078)
 
 mod_food_win_3.3 <- glmmTMB(Muskox ~ scale(Treed_broadleaf) +
                               offset(log(n_days_effort)) + (1|cluster), family="nbinom2", data = model_variables %>% filter(season == "Winter")) #running model with just Treed_broadleaf variable (estimate: 0.107)
@@ -468,8 +468,8 @@ coef_allo <- ggplot(comp3,aes(x=Variable,y=Estimate)) +
   geom_point() +
   geom_errorbar(aes(ymin=Lower,ymax=Upper)) +
   coord_flip() +
-  labs(x= "Variable", y= "Coefficent estimate") +
-  labs(title = "Coefficent Estimates") +
+  labs(x= "Variable", y= "Coefficient estimate") +
+  labs(title = "Coefficient Estimates") +
   theme(
     axis.title.y = element_text(margin = margin(t = 0, r = 30, b = 0, l = 0)),
     panel.background = element_rect(fill = 'white', colour = 'darkgrey'),
@@ -517,4 +517,7 @@ coef_estimates <- ggplot(comp3, aes(x = Variable, y = Estimate)) +
     axis.title = element_text(size = 6),
     axis.text = element_text(size = 6)
   )
+
+
+
 

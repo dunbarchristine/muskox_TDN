@@ -197,6 +197,8 @@ TDN_DEM <- read.csv("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/TDN
 #load data
 TDN_DEM<- terra::rast("~/Desktop/Analysis/Learning/learning/Spatial/TDN_DEM/Copernicus_TDN_DEM.tif")
 
+TDN_TRI <- rast("~/Desktop/Analysis/Learning/learning/Spatial/TDN_TRI")
+
 #trying a different DEM dataset because the TDN_DEM has NAs in it
 ArcticDEM <- terra::rast("~/Desktop/Analysis/Learning/learning/Spatial/TDN_DEM/ArcticDEM_500m/arcticdem_mosaic_500m_v4.1_dem.tif")
 

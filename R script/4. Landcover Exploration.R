@@ -239,6 +239,31 @@ ggplot(data = tdn_ecoregions_2) +
   )
 
 
+
+ggplot(data = tdn_ecoregions_2) +
+  geom_sf(aes(fill = ECO2_NAM_1), color = "black", size = 0.2) +
+  geom_sf(
+    data = camera_locations,
+    aes(color = "Camera Locations"),
+    size = 2
+  ) +
+  scale_fill_manual(
+    name = "TDN Ecoregions",
+    values = c("burlywood", "darkseagreen")
+  ) +
+  scale_color_manual(
+    name = "",
+    values = c("Camera Locations" = "red")
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+
 #Calculating the Ecoregion for each Camera location
 locs_ecoregions <- cameras_sf %>%
   st_transform(crs = st_crs(ecoregions_cropped)) #change the projection to match the raster
@@ -274,7 +299,7 @@ muskox_detections <- model_variables %>%
             Shrub = mean(Shrub), 
             Trees = mean(Trees),
             Groundcover = mean(Groundcover),
-            Water = mean(Water),
+            Water = mean(Water)
             ) %>%
   mutate(Muskox_per_week = Muskox/N_days_effort*7) %>%
   pivot_longer(cols = c("Trees", "Groundcover", "Shrub", "Water"), names_to = "landcover_class", values_to = "proportion") %>%
@@ -290,6 +315,7 @@ muskox_detections <- model_variables %>%
             se = sd / sqrt(num_cameras)   # ✅ Standard Error
   )
 
+
 #making it so no values show on the plot that go below zero
 muskox_detections_plot <- muskox_detections %>%
   mutate(ymin = Muskox_per_week_mean - sd,
@@ -304,15 +330,77 @@ ggplot(muskox_detections_plot, aes(x = landcover_class, y = Muskox_per_week_mean
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
   labs(
-    x = "Land Cover Class",
+    x = "Majority Land Cover Class",
     y = "Average Muskox Detection Per Week"
   ) +
   scale_x_discrete(labels = c(
-    "Shrub" = "Shrub",
-    "Trees" = "Trees",
+    "Shrub" = "Shrub Land Cover",
+    "Trees" = "Treed Land Cover",
     "Groundcover" = "Groundcover",
-    "Water" = "Water"
+    "Water" = "Water Cover"
   ))
+
+#checking how many winter detections of muskox
+model_variables %>%
+  st_drop_geometry() %>%
+  filter(season == "Winter") %>%
+  summarise(total = sum(Muskox, na.rm = TRUE))
+
+#checking how many summer detections of muskox
+model_variables %>%
+  st_drop_geometry() %>%
+  filter(season == "Summer") %>%
+  summarise(total = sum(Muskox, na.rm = TRUE))
+
+#now looking at 61 winter detections occurred across how many cameras?:
+model_variables %>%
+  st_drop_geometry() %>%
+  filter(season == "Winter") %>%
+  group_by(location) %>%
+  summarise(Muskox = sum(Muskox, na.rm = TRUE), .groups = "drop") %>%
+  filter(Muskox > 0) %>%
+  summarise(
+    total_detections = sum(Muskox),
+    n_cameras = n()
+  )
+
+#looking at how many summer detections (706) occurred across how many cameras: 
+model_variables %>%
+  st_drop_geometry() %>%
+  filter(season == "Summer") %>%
+  group_by(location) %>%
+  summarise(Muskox = sum(Muskox, na.rm = TRUE), .groups = "drop") %>%
+  filter(Muskox > 0) %>%
+  summarise(
+    total_detections = sum(Muskox),
+    n_cameras = n()
+  )
+
+#now looking at how many SITES in winter (60 sites total) not how many cameras:
+model_variables %>%
+  st_drop_geometry() %>%
+  filter(season == "Winter") %>%
+  group_by(cluster) %>%
+  summarise(Muskox = sum(Muskox, na.rm = TRUE), .groups = "drop") %>%
+  filter(Muskox > 0) %>%
+  summarise(
+    total_detections = sum(Muskox),
+    n_cameras = n()
+  )
+
+
+#now looking at how many SITES in summer (60 sites total) not how many cameras:
+model_variables %>%
+  st_drop_geometry() %>%
+  filter(season == "Summer") %>%
+  group_by(cluster) %>%
+  summarise(Muskox = sum(Muskox, na.rm = TRUE), .groups = "drop") %>%
+  filter(Muskox > 0) %>%
+  summarise(
+    total_detections = sum(Muskox),
+    n_cameras = n()
+  )
+
 
 #making plots for weekly muskox detections in regard to fire
 muskox_detections_fire <- model_variables %>%
@@ -373,14 +461,14 @@ ggplot(muskox_detections_fire_plot, aes(x = landcover_class, y = Muskox_per_week
 
 write_xlsx(muskox_detections, "muskox_detections.xlsx")
 
-#making simple bar grpahs showing average muskox detections
-ggplot(muskox_detections, aes(x = landcover_class, y = Muskox_per_month_mean, fill = landcover_class)) +
+#making simple bar graphs showing average muskox detections
+ggplot(muskox_detections, aes(x = landcover_class, y = Muskox_per_week_mean, fill = landcover_class)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   facet_wrap(~season) +
   labs(
-    title = "Average Monthly Muskox Detections by Land Cover Class",
+    #title = "Average Monthly Muskox Detections by Land Cover Class",
     x = "Dominant Land Cover Class",
-    y = "Average Muskox Detections per Month",
+    y = "Average Muskox Detections per Week",
     fill = "Land Cover"
   ) +
   scale_fill_manual(values = c(
@@ -508,20 +596,77 @@ ggplot(wolf_detections, aes(x = landcover_class, y = wolf_per_month_mean, fill =
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+#making a bar graph with all species 
+muskox_plot <- muskox_detections %>%
+  transmute(
+    species = "Muskox",
+    landcover_class,
+    season,
+    mean = Muskox_per_week_mean,
+    sd
+  )
+
+grizzly_plot <- grizzly_detections %>%
+  transmute(
+    species = "Grizzly Bear",
+    landcover_class,
+    season,
+    mean = grizz_per_week_mean,
+    sd
+  )
+
+wolf_plot <- wolf_detections %>%
+  transmute(
+    species = "Grey Wolf",
+    landcover_class,
+    season,
+    mean = wolf_per_week_mean,
+    sd
+  )
+
+
+all_detections <- bind_rows(
+  muskox_plot,
+  grizzly_plot,
+  wolf_plot
+)
+
+ggplot(all_detections,
+       aes(x = landcover_class, y = mean, fill = landcover_class)) +
+  geom_col(width = 0.7) +
+  facet_grid(species ~ season) +
+  labs(
+    x = "Dominant Land Cover Class",
+    y = "Average Detections per Week",
+    fill = "Land Cover"
+  ) +
+  scale_fill_manual(values = c(
+    "Water" = "royalblue",
+    "Trees" = "olivedrab",
+    "Shrub" = "red4",
+    "Groundcover" = "yellowgreen"
+  )) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.spacing = unit(1, "lines")
+  )
+
+
 
 
 muskox_avg_detections <- model_variables %>%
   st_drop_geometry() %>%
   #drop_na(N_days_effort) %>%
   group_by(location, cluster, season) %>%
-  summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort)
-            # Shrub = mean(Shrub), 
-            # Trees = mean(Trees),
-            # Groundcover = mean(Groundcover),
-            # Water = mean(Water),
+  summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort),
+             Shrub = mean(Shrub), 
+             Trees = mean(Trees),
+             Groundcover = mean(Groundcover),
+             Water = mean(Water),
   ) %>%
   mutate(Muskox_per_month = Muskox/N_days_effort*30) %>%
-  #pivot_longer(cols = c("Trees", "Groundcover", "Shrub", "Water"), names_to = "landcover_class", values_to = "proportion") %>%
+  pivot_longer(cols = c("Trees", "Groundcover", "Shrub", "Water"), names_to = "landcover_class", values_to = "proportion") %>%
   group_by(location, cluster, season) %>%
   filter(proportion == max(proportion)) %>%
   group_by(season) %>%
@@ -680,7 +825,7 @@ all_predictions <- bind_rows(
   predators_prediction %>%
     mutate(
       x = Predators_new,
-      predictor = "Number of Predators"
+      predictor = "Weekly Detection Frequency of Predators"
     ) %>%
     dplyr::select(x, predicted_muskox_week, predictor),
   
@@ -715,9 +860,141 @@ ggplot(all_predictions, aes(x = x, y = predicted_muskox_week)) +
   theme_minimal() +
   theme(
     strip.placement = "outside",
-    strip.text = element_text(size = 14, face = "bold"),
+    strip.text = element_text(size = 10, face = "bold"),
     axis.title.y = element_text(size = 18)
   )
+
+#generating confidence intervals 
+predators_prediction <- predator_data %>%
+  mutate(
+    pred_link = predict(mod_pred_sum_1,
+                        newdata = .,
+                        allow.new.levels = TRUE,
+                        type = "link",
+                        se.fit = TRUE)$fit,
+    
+    se_link = predict(mod_pred_sum_1,
+                      newdata = .,
+                      allow.new.levels = TRUE,
+                      type = "link",
+                      se.fit = TRUE)$se.fit
+  ) %>%
+  mutate(
+    lower_link = pred_link - 1.96 * se_link,
+    upper_link = pred_link + 1.96 * se_link,
+    
+    predicted_muskox_week = exp(pred_link),
+    lower = exp(lower_link),
+    upper = exp(upper_link)
+  )
+
+ggplot(predators_prediction,
+       aes(x = Predators_new,
+           y = predicted_muskox_week)) +
+  
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              alpha = 0.2,
+              fill = "grey70") +
+  
+  geom_line(linewidth = 1) +
+  
+  geom_rug(
+    data = model_variables,
+    aes(x = Predators, y = 0),
+    inherit.aes = FALSE,
+    sides = "b",
+    alpha = 0.3,
+    position = position_jitter(height = 0.02)
+  ) +
+  
+  labs(
+    x = "Number of Predators",
+    y = "Predicted Muskox Detections per Week"
+  ) +
+  theme_minimal()
+
+###
+add_ci <- function(model, newdata) {
+  
+  pred <- predict(model,
+                  newdata = newdata,
+                  allow.new.levels = TRUE,
+                  type = "link",
+                  se.fit = TRUE)
+  
+  newdata$fit_link <- pred$fit
+  newdata$se_link  <- pred$se.fit
+  
+  newdata$predicted_muskox_week <- exp(newdata$fit_link)
+  newdata$lower <- exp(newdata$fit_link - 1.96 * newdata$se_link)
+  newdata$upper <- exp(newdata$fit_link + 1.96 * newdata$se_link)
+  
+  return(newdata)
+}
+
+predators_prediction <- add_ci(mod_pred_sum_1, predator_data)
+TRI_prediction       <- add_ci(mod_pred_sum_1, TRI_data)
+Shrub_prediction     <- add_ci(mod_pred_sum_1, Shrub_data)
+
+all_predictions <- dplyr::bind_rows(
+  
+  predators_prediction %>%
+    dplyr::mutate(
+      x = Predators_new,
+      predictor = "Weekly Detection\nFrequency of Predators"
+    ) %>%
+    dplyr::select(x, predicted_muskox_week, lower, upper, predictor),
+  
+  TRI_prediction %>%
+    dplyr::mutate(
+      x = TRI_extracted_new,
+      predictor = "Terrain Ruggedness Index"
+    ) %>%
+    dplyr::select(x, predicted_muskox_week, lower, upper, predictor),
+  
+  Shrub_prediction %>%
+    dplyr::mutate(
+      x = Shrub_new,
+      predictor = "Shrub Land Cover"
+    ) %>%
+    dplyr::select(x, predicted_muskox_week, lower, upper, predictor)
+)
+
+ggplot(all_predictions,
+       aes(x = x, y = predicted_muskox_week)) +
+  
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              alpha = 0.2,
+              fill = "grey70") +
+  
+  geom_line(linewidth = 1) +
+  
+  facet_wrap(~ predictor,
+             scales = "free_x",
+             nrow = 1) +
+  
+  labs(
+    x = NULL,
+    y = "Predicted Muskox Detections per Week"
+  ) +
+  
+  theme_minimal() +
+  
+  theme(
+    axis.text.x = element_text(size = 10), #numbers 
+    axis.text.y = element_text(size = 8),
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 15), #muskox detections per week 
+    strip.text   = element_text(size = 12, face = "bold")
+  )
+
+
+
+
+
+
+
+
 
 
 
@@ -771,22 +1048,443 @@ TDN_ecoregions_2 <- readRDS("Data/Raw/Ecoregions/TDN_ecoregions.rds") %>%
 TDN_ecoregions <- st_read("~/Desktop/Analysis/Learning/learning/spatial/shapefiles/FMD_NWT_EcoRegions.shp")
   
 
+#looking at the dominant landcover class for each camera 
+
+camera_dominant_cover <- overlap_SCANFI_cameras %>%
+  as_tibble() %>%
+  group_by(location) %>%
+  slice_max(n, with_ties = FALSE) %>%  # dominant landcover per camera
+  ungroup()
+
+camera_counts <- camera_dominant_cover %>%
+  count(cover, name = "n_cameras")
+
+camera_counts
+
+
+#making TRI map
+library(terra)
+
+# Make sure boundary and raster have same CRS
+TDN_boundary_vect <- vect(st_transform(TDN_boundary, crs(TDN_tri_arctic)))
+
+# Crop
+TRI_crop <- crop(TDN_tri_arctic, TDN_boundary_vect)
+
+# Mask
+TRI_mask <- mask(TRI_crop, TDN_boundary_vect)
+
+ggplot() +
+  tidyterra::geom_spatraster(
+    data = TRI_mask,
+    aes(fill = TRI)
+  ) +
+  geom_sf(
+    data = TDN_boundary,
+    fill = NA,
+    colour = "black",
+    linewidth = 0.5
+  ) +
+  scale_fill_viridis_c(
+    name = "Terrain Ruggedness Index",
+    option = "magma"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank()
+  )
+
+library(terra)
+library(sf)
+library(ggplot2)
+library(tidyterra)
+
+# Reproject TRI raster to WGS84
+TRI_wgs84 <- terra::project(
+  TDN_tri_arctic,
+  "EPSG:4326"
+)
+
+# Reproject boundary to WGS84
+TDN_boundary_wgs84 <- st_transform(
+  TDN_boundary,
+  crs = 4326
+)
+
+# Convert boundary to terra vector
+TDN_boundary_vect <- terra::vect(TDN_boundary_wgs84)
+
+# Crop and mask TRI raster to boundary
+TRI_wgs84_crop <- terra::crop(
+  TRI_wgs84,
+  TDN_boundary_vect
+)
+
+TRI_wgs84_mask <- terra::mask(
+  TRI_wgs84_crop,
+  TDN_boundary_vect
+)
+
+# Check raster layer name
+names(TRI_wgs84_mask)
+
+# Plot
+ggplot() +
+  
+  tidyterra::geom_spatraster(
+    data = TRI_wgs84_mask,
+    aes(fill = TRI)
+  ) +
+  
+  geom_sf(
+    data = TDN_boundary_wgs84,
+    fill = NA,
+    colour = "black",
+    linewidth = 0.5
+  ) +
+  
+  scale_fill_viridis_c(
+    name = "Terrain Ruggedness Index",
+    option = "magma"
+  ) +
+  
+  coord_sf(
+    expand = FALSE
+  ) +
+  
+  labs(
+    title = "Terrain Ruggedness Index"
+  ) +
+  
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    panel.background = element_rect(
+      fill = "white",
+      colour = NA
+    ),
+    plot.background = element_rect(
+      fill = "white",
+      colour = NA
+    ),
+    legend.title = element_text(size = 11),
+    legend.text = element_text(size = 10)
+  )
+
+
+library(terra)
+library(sf)
+library(ggplot2)
+library(tidyterra)
+
+# ---------------------------------------------------
+library(terra)
+library(sf)
+library(ggplot2)
+library(tidyterra)
+
+# ---------------------------------------------------
+# 1. TRI raster (your true source)
+# ---------------------------------------------------
+TRI <- terra::terrain(ArcticDEM, v = "TRI")
+
+# ---------------------------------------------------
+# 2. IMPORTANT: match CRS BEFORE cropping
+# ---------------------------------------------------
+TDN_boundary_proj <- st_transform(
+  TDN_boundary,
+  crs = crs(TRI)
+)
+
+# convert to terra vector AFTER transformation
+TDN_vect <- terra::vect(TDN_boundary_proj)
+
+# ---------------------------------------------------
+# 3. Crop + mask (NOW it will work)
+# ---------------------------------------------------
+TRI_crop <- terra::crop(TRI, TDN_vect)
+TRI_mask <- terra::mask(TRI_crop, TDN_vect)
+
+# check range (this is your TRUE working TRI)
+global(TRI_mask, range, na.rm = TRUE)
+
+# ---------------------------------------------------
+# 4. Extract for model (same raster!)
+# ---------------------------------------------------
+TRI_extracted <- terra::extract(TRI_mask, camera_locations)
+
+# ---------------------------------------------------
+# 5. OPTIONAL: reproject ONLY for plotting
+# ---------------------------------------------------
+TRI_plot <- terra::project(TRI_mask, "EPSG:4326")
+
+TDN_boundary_wgs84 <- st_transform(TDN_boundary, 4326)
+
+# ---------------------------------------------------
+# 6. Plot
+# ---------------------------------------------------
+ggplot() +
+  tidyterra::geom_spatraster(
+    data = TRI_mask
+  ) +
+  scale_fill_viridis_c(
+    name = "Terrain Ruggedness Index",
+    option = "magma"
+  ) +
+  theme_minimal()
+  geom_sf(
+    data = TDN_boundary_wgs84,
+    fill = NA,
+    colour = "black",
+    linewidth = 0.5
+  ) +
+  scale_fill_viridis_c(
+    name = "Terrain Ruggedness Index",
+    option = "magma"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank()
+  )
 
 
 
+  library(terra)
+  library(sf)
+  library(ggplot2)
+  library(tidyterra)
+  
+  # ---------------------------------------------------
+  # 1. Create TRUE Terrain Ruggedness Index from DEM
+  # ---------------------------------------------------
+  TRI <- terra::terrain(
+    ArcticDEM,
+    v = "TRI"
+  )
+  
+  # Check full raster range (sanity check)
+  global(TRI, range, na.rm = TRUE)
+  
+  # ---------------------------------------------------
+  # 2. Align boundary CRS to TRI raster
+  # ---------------------------------------------------
+  TDN_vect <- terra::vect(TDN_boundary)
+  TDN_vect <- terra::project(TDN_vect, crs(TRI))
+  
+  # ---------------------------------------------------
+  # 3. Crop + mask to study area
+  # ---------------------------------------------------
+  TRI_mask <- terra::mask(
+    terra::crop(TRI, TDN_vect),
+    TDN_vect
+  )
+  
+  # Check final study-area range
+  global(TRI_mask, range, na.rm = TRUE)
+  
+  # ---------------------------------------------------
+  # 4. TRUE TRI MAP
+  # ---------------------------------------------------
+  
+  TRI_wgs84 <- terra::project(TRI_mask, "EPSG:4326")
+  
+  TDN_wgs84 <- st_transform(TDN_boundary, 4326)
+  
+  
+  ggplot() +
+    tidyterra::geom_spatraster(
+      data = TRI_wgs84
+    ) +
+    geom_sf(
+      data = TDN_wgs84,
+      fill = NA
+    ) +
+    scale_fill_viridis_c(option = "magma") +
+    coord_sf(expand = FALSE) +
+    theme_void()
+  
+  ggplot() +
+    
+    tidyterra::geom_spatraster(
+      data = TRI_mask
+    ) +
+    
+    geom_sf(
+      data = TDN_boundary,
+      fill = NA,
+      colour = "black",
+      linewidth = 0.5
+    ) +
+    
+    scale_fill_viridis_c(
+      name = "Terrain Ruggedness Index",
+      option = "magma"
+    ) +
+    
+    coord_sf(expand = FALSE) +
+    
+    theme_minimal() +
+    theme(
+      axis.text = element_blank(),
+      axis.title = element_blank(),
+      panel.grid = element_blank(),
+      panel.background = element_rect(fill = "white", colour = NA),
+      plot.background = element_rect(fill = "white", colour = NA)
+    )
 
+  library(terra)
+  library(sf)
+  library(ggplot2)
+  library(tidyterra)
+  
+  # ---------------------------------------------------
+  # 1. Use YOUR real TRI raster
+  # ---------------------------------------------------
+  TRI <- TDN_TRI
+  
+  # ---------------------------------------------------
+  # 2. Boundary to same CRS
+  # ---------------------------------------------------
+  TDN_vect <- terra::vect(TDN_boundary)
+  TDN_vect <- terra::project(TDN_vect, crs(TRI))
+  
+  # ---------------------------------------------------
+  # 3. Crop + mask
+  # ---------------------------------------------------
+  TRI_mask <- terra::mask(
+    terra::crop(TRI, TDN_vect),
+    TDN_vect
+  )
+  
+  # ---------------------------------------------------
+  # 4. Check correct range
+  # ---------------------------------------------------
+  global(TRI_mask, range, na.rm = TRUE)
+  
+  # ---------------------------------------------------
+  # 5. Plot TRUE TRI map
+  # ---------------------------------------------------
+  
+  ggplot() +
+    
+    tidyterra::geom_spatraster(
+      data = TRI_mask
+    ) +
+    
+    geom_sf(
+      data = TDN_boundary,
+      fill = NA,
+      colour = "black",
+      linewidth = 0.5
+    ) +
+    
+    scale_fill_viridis_c(
+      option = "magma",
+      na.value = "transparent"
+    ) +
+    
+    coord_sf(expand = FALSE, clip = "on") +
+    
+    theme_void() +
+    theme(
+      panel.background = element_rect(fill = "white", colour = NA),
+      plot.background  = element_rect(fill = "white", colour = NA),
+      panel.border = element_blank()
+    )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  library(terra)
+  
+  breaks <- c(0, 50, 100, 200, 400, 900)
+  
+  TRI_class <- terra::classify(
+    TRI_mask,
+    rcl = cbind(breaks[-length(breaks)], breaks[-1], 1:5)
+  )
+  
+  # 1. Define colours FIRST
+  tri_cols <- c(
+    "1" = "black",
+    "2" = "gold",
+    "3" = "firebrick1",
+    "4" = "olivedrab3",
+    "5" = "royalblue1"
+  )
+  
+  # 2. Plot
+  ggplot() +
+    
+    tidyterra::geom_spatraster(data = TRI_class) +
+    
+    geom_sf(data = TDN_boundary, fill = NA) +
+    
+    scale_fill_manual(
+      values = tri_cols,
+      name = "Terrain Ruggedness Index",
+      labels = c(
+        "0–50",
+        "50–100",
+        "100–200",
+        "200–400",
+        "400–900"
+      ),
+      na.value = "transparent",
+      na.translate = FALSE
+    ) +
+    
+    theme_void()
+  
+  
+#adding basemap
+  
+  library(ggspatial)
+  
+  TRI_web <- terra::project(TRI_class, "EPSG:3857")
+  TRI_web <- as.factor(TRI_web)
+  TDN_web <- sf::st_transform(TDN_boundary, 3857)
+  
+  ggplot() +
+    
+    annotation_map_tile(type ="cartolight", zoom = 9) +
+    
+    tidyterra::geom_spatraster(data = TRI_web, alpha = 0.75) +
+    
+    geom_sf(data = TDN_web, fill = NA, colour = "black") +
+    
+    scale_fill_manual(
+      values = tri_cols,
+      name = "Terrain Ruggedness Index",
+      labels = c("0–50","50–100","100–200","200–400","400–900"),
+      na.value = "transparent",
+      na.translate = FALSE
+    ) +
+    
+    coord_sf(crs = sf::st_crs(3857)) +
+    
+    theme_void() +
+    
+    theme(
+      legend.position = c(0.96, 0.08),
+      legend.justification = c(1, 0),
+      legend.background = element_rect(fill = "white", colour = "black", linewidth = 0.3),
+      legend.title = element_text(size = 10),
+      legend.text = element_text(size = 9)
+    )
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+    

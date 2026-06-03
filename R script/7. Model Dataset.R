@@ -1,4 +1,5 @@
-
+library(broom)
+library(dplyr)
 
 #the extents didnt match so Chat GPT told me to do this
 SCANFI_landcover_cropped_aligned <- crop(SCANFI_landcover_cropped, Camera_buffer_zones)
@@ -114,6 +115,111 @@ model_variables <- model_variables %>%
 
 
 write.csv(model_variables, file = "~/Desktop/Analysis/Learning/CSV Files/model_variables.csv")
+
+
+#creating output tables based on models
+
+# Extract model coefficients
+mod2_global_table <- tidy(mod2_global) %>%
+  filter(term != "(Intercept)") %>%  # Optional: remove intercept
+  mutate(
+    Significance = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01  ~ "**",
+      p.value < 0.05  ~ "*",
+      p.value < 0.1   ~ ".",
+      TRUE            ~ ""
+    )
+  )
+
+#adding hypothesis column
+# Define hypotheses (in order matching the model terms)
+hypotheses <- c(
+  "Predation",
+  "Land Cover",
+  "Fire",
+  "Topography"
+)
+
+mod2_global_table$Hypothesis <- hypotheses
+
+
+
+library(broom)
+library(dplyr)
+library(gt)
+
+mod2_global_table <- tidy(mod2_global) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(
+    Hypothesis = case_when(
+      term %in% c("Groundcover", "Shrub", "Water") ~ "Land Cover",
+      term %in% c("TRI_extracted", "Arctic_DEM_500m_elevation_m","log_esker_camera_distances") ~ "Topography",
+      term == "" ~ "Predation",
+      str_detect(term, "^fire_age") ~ "Fire",  # catches terms like fire_5yr
+      TRUE ~ "Other"
+    ),
+    Significance = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01 ~ "**",
+      p.value < 0.05 ~ "*",
+      p.value < 0.1 ~ ".",
+      TRUE ~ ""
+    )
+  ) %>%
+  rename(
+    Variable = term,
+    Estimate = estimate,
+    `Std. Error` = std.error,
+    `Z value` = statistic,
+    `P value` = p.value
+  ) %>%
+  dplyr::select(Hypothesis, Variable, Estimate, `Std. Error`, `Z value`, `P value`, Significance)
+
+
+#summarising average muskox detections in summer and winter
+
+muskox_season_summary <- model_variables %>%
+  st_drop_geometry() %>%
+  group_by(season) %>%
+  summarise(
+    Muskox = sum(Muskox, na.rm = TRUE),
+    N_days_effort = sum(N_days_effort, na.rm = TRUE)
+  ) %>%
+  mutate(
+    Muskox_per_month = Muskox / N_days_effort * 30,
+    Muskox_per_week = Muskox / N_days_effort * 7
+  )
+
+
+wolf_season_summary <- model_variables %>%
+  st_drop_geometry() %>%
+  group_by(season) %>%
+  summarise(
+    gray_wolf = sum(gray_wolf, na.rm = TRUE),
+    N_days_effort = sum(N_days_effort, na.rm = TRUE)
+  ) %>%
+  mutate(
+    wolf_per_month = gray_wolf / N_days_effort * 30,
+    wolf_per_week = gray_wolf / N_days_effort * 7
+  )
+
+grizz_season_summary <- model_variables %>%
+  st_drop_geometry() %>%
+  group_by(season) %>%
+  summarise(
+    grizzly_bear = sum(grizzly_bear, na.rm = TRUE),
+    N_days_effort = sum(N_days_effort, na.rm = TRUE)
+  ) %>%
+  mutate(
+    grizz_per_month = grizzly_bear / N_days_effort * 30,
+    grizz_per_week = grizzly_bear / N_days_effort * 7
+  )
+
+
+
+
+
 
 
 

@@ -8,6 +8,8 @@ library(readxl)
 
 fire_data_nbac <- sf::read_sf("~/Desktop/Analysis/Learning/learning/Spatial/shapefiles/NBAC/NBAC_1972to2024_20250506_shp") 
 
+
+
 camera_locations <- read_csv("~/Desktop/Analysis/Learning/learning/raw data/Species Raw Data (May 2025)/NWTBM_Thaidene_Nëné_Biodiversity_Project_2021_location_report.csv") %>%
   drop_na("longitude") %>%
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
@@ -31,6 +33,22 @@ saveRDS(fire_data_nbac_crop, saveRDS(fire_data_nbac_crop, "~/Desktop/Analysis/Le
 fire_data_nbac_crop <- readRDS("RDS files/fire_data_nbac_crop.rds")
 
 ### combine cropped fire data
+fire_data_subset <- fire_data_nbac_crop %>%
+  sf::st_transform(4326) %>%
+  mutate(
+    fire_age = case_when(
+      YEAR >= 2022 - 10 ~ 0,                      # 0-10 year old fires
+      YEAR >= 2022 - 20 & YEAR < 2022 - 10 ~ 1,   # 11-20 years
+      YEAR >= 2022 - 30 & YEAR < 2022 - 20 ~ 2,   # 21-30 years
+      YEAR < 2022 - 30 ~ 3,                       # 31+ years
+      TRUE ~ 4                                    # Unburned / NA areas
+    )
+  )
+
+
+
+
+#old code 
 fire_data_subset <- fire_data_nbac_crop %>%
   # bind_rows(fire_data_nfdb_crop %>%
   #             filter(YEAR < 1972)) %>%
@@ -95,6 +113,109 @@ fire_variables <- fire_buffer_proportion %>%
     values_fill = list(fire_prop = 0)  # Fill missing values with 0
   )
 
+library(dplyr)
+
+# Step 1: Calculate proportion of each fire age in the whole study area
+fire_age_summary <- fire_buffer_proportion %>%
+  as_tibble() %>%
+  mutate(
+    fire_age = replace_na(as.numeric(fire_age), 4)  # NAs → 4 (unburned/unknown)
+  ) %>%
+  filter(fire_age %in% 0:4) %>%                    # only fire ages 0–3
+  group_by(fire_age) %>%
+  summarise(
+    total_n = sum(n),                               # total pixels/area of this fire age
+    .groups = "drop"
+  ) %>%
+  mutate(
+    dominant_fire_prop = total_n / sum(total_n)     # proportion across study area
+  )
+
+fire_buffer_with_clusters <- fire_buffer_proportion %>%
+  as_tibble() %>%
+  left_join(
+    model_variables %>%
+      st_drop_geometry() %>%
+      group_by(location) %>%
+      summarise(cluster = n_distinct(cluster), .groups = "drop"),
+    by = "location"
+  )
+
+
+# Step 2: Determine dominant fire age per cluster (camera)
+
+cluster_fire_age <- fire_buffer_with_clusters %>%
+  as_tibble() %>%
+  mutate(
+    fire_age = replace_na(as.numeric(fire_age), 4)
+  ) %>%
+  filter(fire_age %in% 0:4) %>%                    # only 0–3
+  group_by(location, cluster, fire_age) %>%
+  summarise(area_n = sum(n), .groups = "drop") %>%
+  group_by(location, cluster) %>%
+  slice_max(area_n, n = 1, with_ties = FALSE) %>%  # dominant fire age per cluster
+  ungroup() %>%
+  select(location, cluster, dominant_fire_age = fire_age)
+
+cluster_fire_age <- cluster_fire_age %>%
+  rename(fire_age = dominant_fire_age)
+# Step 3: Join with muskox detections per cluster
+muskox_fire_summary <- model_variables %>%
+  st_drop_geometry() %>%
+  mutate(cluster = as.character(cluster)) %>%
+  group_by(location, cluster) %>%
+  summarise(Muskox = sum(Muskox), .groups = "drop") %>%
+  left_join(cluster_fire_age, by = c("location", "cluster")) %>%
+  group_by(fire_age) %>%
+  summarise(
+    Muskox_detections = sum(Muskox, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  tidyr::complete(fire_age = 0:4, fill = list(Muskox_detections = 0))
+
+
+
+muskox_fire_summary <- model_variables %>%
+  st_drop_geometry() %>%
+  group_by(location, cluster) %>%
+  summarise(Muskox = sum(Muskox), .groups = "drop") %>%
+  # ensure cluster is character
+  mutate(cluster = as.character(cluster)) %>%
+  left_join(
+    cluster_fire_age %>% mutate(cluster = as.character(cluster)), 
+    by = c("location", "cluster")
+  ) %>%
+  group_by(dominant_fire_age) %>%
+  summarise(
+    Muskox_detections = sum(Muskox, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+muskox_fire_summary <- model_variables %>%
+  st_drop_geometry() %>%
+  mutate(cluster = as.character(cluster)) %>%
+  group_by(location, cluster) %>%
+  summarise(Muskox = sum(Muskox), .groups = "drop") %>%
+  left_join(
+    cluster_fire_age %>%
+      mutate(cluster = as.character(cluster)),
+    by = c("location", "cluster")
+  ) %>%
+  group_by(fire_age) %>%
+  summarise(
+    Muskox_detections = sum(Muskox, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  tidyr::complete(fire_age = 0:4, fill = list(Muskox_detections = 0))
+# Step 4: Combine with fire age proportions
+final_fire_summary <- fire_age_summary %>%
+  left_join(muskox_fire_summary, by = "fire_age") %>%
+  select(fire_age, dominant_fire_prop, Muskox_detections)
+
+
+
+
 # Reorder columns based on the numbers in their names
 fire_variables <- fire_variables %>%
   dplyr::select(order(-as.numeric(sub("fire_age", "", names(.)))))  # Extract numbers and reorder columns
@@ -119,7 +240,10 @@ comb_overlap_SCANFI_and_selected_mammals_week <- merge(model_variables,
                                             by = "location", 
                                             all.x = TRUE)  # Keeps all rows from comb_overlap_SCANFI_and_selected_mammals_week
 
-
+saveRDS(
+  comb_overlap_SCANFI_and_selected_mammals_week,
+  "~/Desktop/Analysis/Learning/learning/RDS files/comb_overlap_SCANFI_and_selected_mammals_week.rds"
+)
 
 adding_variables_elevations_eskers <- merge(comb_overlap_SCANFI_and_selected_mammals_week, 
                                             camera_locations_df[, c("location", "Arctic_DEM_500m_elevation_m", "esker_camera_distances")], 
@@ -148,6 +272,11 @@ adding_variables_elevations_eskers <- readRDS("~/Desktop/Analysis/Learning/learn
 all_variables <- fire_variables %>%
   left_join(adding_variables_elevations_eskers, by = "location") %>%
   mutate(log_esker_camera_distances = log(esker_camera_distances + 1))
+
+saveRDS(all_variables,"~/Desktop/Analysis/Learning/learning/RDS files/all_variables.rds") #this is where I have it saved on my desktop. This is to save the rds
+
+all_variables <- readRDS("~/Desktop/Analysis/Learning/learning/RDS files/all_variables.rds") #this code is to read the rds file you saved above
+
 
 #renaming columns
 all_variables <- all_variables %>%
@@ -247,13 +376,20 @@ muskox_fire_detections <- model_variables %>%
             N_days_effort = sum(N_days_effort),
             Muskox_per_week_mean_log = mean(log(Muskox_per_week + 1/7)), 
             sd_log = sd(log(Muskox_per_week + 1/7)), 
+            se_log = sd_log / sqrt(n()),
             num_cameras = n(),
             num_cluster = length(unique(cluster))) %>%
   mutate(Muskox_per_week_mean = exp(Muskox_per_week_mean_log) - 1/7, 
          upper = exp(Muskox_per_week_mean_log + 1.96 * sd_log) - 1/7,
          lower = exp(Muskox_per_week_mean_log - 1.96 * sd_log) - 1/7,
-         lower = pmax(lower, 0),
-se = sd_log / sqrt(num_cameras))
+         lower = ifelse(lower < 0, 0, lower)) %>%
+  mutate(fire_age = recode(fire_age,
+                           "fire_age0" = "0 - 10 Years",
+                           "fire_age1" = "11 - 20 Years",
+                           "fire_age2" = "21 - 30 Years",
+                           "fire_age3" = "31 to 50 Years",
+                           "fire_age4" = "Unburned"))
+
 
 
 
@@ -268,14 +404,7 @@ ggplot(muskox_fire_detections, aes(x = fire_age, y = Muskox_per_week_mean)) +
   labs(
     x = "Years Post Fire",
     y = "Average Muskox Detection Per Week"
-  )  +
-  scale_x_discrete(labels = c(
-    "fire_age0" = "0–10",
-    "fire_age1" = "11–20",
-    "fire_age2" = "21–30",
-    "fire_age3" = "31–50",
-    "fire_age4" = "Unburned"
-  ))
+  )
 
 
 
@@ -301,8 +430,8 @@ ggplot(muskox_fire_detections, aes(x = fire_age, y = Muskox_per_week_mean, fill 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
-
 # Calculate total wolf detections weighted by fire age proportion
+
 wolf_fire_detections <- model_variables %>%
   st_drop_geometry() %>%
   #drop_na(N_days_effort) %>%
@@ -314,17 +443,46 @@ wolf_fire_detections <- model_variables %>%
             fire_age3 = mean(fire_age3),
             fire_age4 = mean(fire_age4),
   ) %>%
-  mutate(wolf_per_month = wolf/N_days_effort*30) %>%
+  mutate(wolf_per_week = wolf/N_days_effort*7) %>%
   pivot_longer(cols = c("fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4"), names_to = "fire_age", values_to = "proportion") %>%
   group_by(location, cluster, season) %>%
   filter(proportion == max(proportion)) %>%
   group_by(fire_age, season) %>%
-  summarise(wolf = sum(wolf), 
-            N_days_effort = sum(N_days_effort),
-            wolf_per_month_mean = mean(wolf_per_month), 
-            sd = sd(wolf_per_month),
-            num_cameras = n(),
-            num_cluster = length(unique(cluster)))
+  summarise(
+    wolf = sum(wolf),
+    N_days_effort = sum(N_days_effort),
+    
+    wolf_per_week_mean = mean(wolf_per_week),
+    sd_wolf_per_week = sd(wolf_per_week),
+    se_wolf_per_week = sd(wolf_per_week) / sqrt(n()),
+    
+    num_cameras = n(),
+    num_cluster = length(unique(cluster))
+  ) %>%
+  mutate(
+    fire_age = recode(fire_age,
+                      "fire_age0" = "0 - 10 Years",
+                      "fire_age1" = "11 - 20 Years",
+                      "fire_age2" = "21 - 30 Years",
+                      "fire_age3" = "31 to 50 Years",
+                      "fire_age4" = "Unburned"
+    )
+  )
+write_xlsx(wolf_fire_detections,"wolf_fire_detections.xlsx") 
+  
+  
+ggplot(wolf_fire_detections, aes(x = fire_age, y = wolf_per_week_mean_log)) +
+  geom_point() +
+  geom_pointrange(aes(ymin = lower, ymax = upper)) +
+  facet_wrap(~season) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(
+    x = "Years Post Fire",
+    y = "Average Gray Wolf Detection Per Week"
+  )
+
+
 
 
 # Calculate total wolf detections weighted by fire age proportion
@@ -352,7 +510,40 @@ grizz_fire_detections <- model_variables %>%
             num_cluster = length(unique(cluster)))
 
 
-
+grizz_fire_detections1 <- model_variables %>%
+  st_drop_geometry() %>%
+  #drop_na(N_days_effort) %>%
+  group_by(location, cluster, season) %>%
+  summarise(
+    grizzly_bear = sum(grizzly_bear),
+    N_days_effort = sum(N_days_effort),
+    
+    fire_age0 = mean(fire_age0), 
+    fire_age1 = mean(fire_age1),
+    fire_age2 = mean(fire_age2),
+    fire_age3 = mean(fire_age3),
+    fire_age4 = mean(fire_age4)
+  ) %>%
+  mutate(grizz_per_month = grizzly_bear / N_days_effort * 30) %>%
+  pivot_longer(
+    cols = c("fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4"),
+    names_to = "fire_age",
+    values_to = "proportion"
+  ) %>%
+  group_by(location, cluster, season) %>%
+  filter(proportion == max(proportion)) %>%
+  group_by(fire_age, season) %>%
+  summarise(
+    grizzly_bear = sum(grizzly_bear),
+    N_days_effort = sum(N_days_effort),
+    
+    grizz_per_month_mean = mean(grizz_per_month, na.rm = TRUE),
+    sd_grizz_per_month   = sd(grizz_per_month, na.rm = TRUE),
+    se_grizz_per_month   = sd_grizz_per_month / sqrt(n()),
+    
+    num_cameras = n(),
+    num_cluster = length(unique(cluster))
+  )
 
 
 
