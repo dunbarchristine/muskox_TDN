@@ -4,6 +4,8 @@ library(terra)
 library(writexl)
 library(ggplot2)
 library(gridExtra)
+library(ggspatial)
+library(tidyterra)
 
 #cropping arcticdem to tdn boundary 
 TDN_boundary_projected_ArcticDEM <- st_transform(TDN_boundary, crs = st_crs(ArcticDEM)) %>%
@@ -215,27 +217,72 @@ tdn_ecoregions <- st_transform(tdn_ecoregions, crs = st_crs(model_variables))
 # Perform spatial join
 model_variables_joined <- st_join(model_variables, tdn_ecoregions, left = TRUE)
 
-
+tdn_buffer <- st_buffer(tdn_ecoregions_2, dist = 70000)  # 75 km buffer
 
 #plotting map of tdn ecoregions and camera locations
-
 ggplot(data = tdn_ecoregions_2) +
+  annotation_map_tile(type = "cartolight", zoom = 6) +
+  
   geom_sf(aes(fill = ECO2_NAM_1), color = "black", size = 0.2) +
+  
   geom_sf(
     data = camera_locations,
-    color = "red",
+    aes(color = "Camera Cluster Location"),
     size = 2
   ) +
+  
   scale_fill_manual(
-    name = "TDN Ecoregions",
+    name = "Thaıdene Nëné Ecoregions",
     values = c("burlywood", "darkseagreen")
   ) +
+  
+  scale_color_manual(
+    name = NULL,
+    values = c("Camera Cluster Location" = "black")
+  ) +
+  
   theme_minimal() +
   theme(
     axis.text = element_blank(),
     axis.title = element_blank(),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank()
+    panel.grid = element_blank()
+  ) +
+  coord_sf(
+    xlim = st_bbox(tdn_buffer)[c("xmin", "xmax")],
+    ylim = st_bbox(tdn_buffer)[c("ymin", "ymax")],
+    expand = FALSE
+  )
+
+
+
+
+bb <- st_bbox(tdn_ecoregions_2)
+
+ggplot(data = tdn_ecoregions_2) +
+  annotation_map_tile(type = "cartolight", zoom = 6) +
+  
+  geom_sf(aes(fill = ECO2_NAM_1), color = "black", size = 0.2) +
+  
+  geom_sf(
+    data = camera_locations,
+    aes(color = "Camera Cluster Location"),
+    size = 2
+  ) +
+  
+  scale_fill_manual(
+    name = "Thaıdene Nëné Ecoregions",
+    values = c("burlywood", "darkseagreen")
+  ) +
+  
+  scale_color_manual(
+    name = NULL,
+    values = c("Camera Cluster Location" = "black")
+  ) +
+  
+  coord_sf(
+    xlim = c(bb["xmin"] - 2, bb["xmax"] + 2),
+    ylim = c(bb["ymin"] - 2, bb["ymax"] + 2),
+    expand = FALSE
   )
 
 
@@ -315,6 +362,39 @@ muskox_detections <- model_variables %>%
             se = sd / sqrt(num_cameras)   # ✅ Standard Error
   )
 
+#adding SD
+muskox_detections1 <- model_variables %>%
+  st_drop_geometry() %>%
+  group_by(location, cluster, season) %>%
+  summarise(
+    Muskox = sum(Muskox),
+    N_days_effort = sum(N_days_effort),
+    
+    Shrub = mean(Shrub), 
+    Trees = mean(Trees),
+    Groundcover = mean(Groundcover),
+    Water = mean(Water)
+  ) %>%
+  mutate(Muskox_per_week = Muskox / N_days_effort * 7) %>%
+  pivot_longer(
+    cols = c("Trees", "Groundcover", "Shrub", "Water"),
+    names_to = "landcover_class",
+    values_to = "proportion"
+  ) %>%
+  group_by(location, cluster, season) %>%
+  filter(proportion == max(proportion)) %>%
+  group_by(landcover_class, season) %>%
+  summarise(
+    Muskox = sum(Muskox),
+    N_days_effort = sum(N_days_effort),
+    
+    Muskox_per_week_mean = mean(Muskox_per_week, na.rm = TRUE),
+    sd_Muskox_per_week   = sd(Muskox_per_week, na.rm = TRUE),
+    se_Muskox_per_week   = sd_Muskox_per_week / sqrt(n()),
+    
+    num_cameras = n(),
+    num_cluster = length(unique(cluster))
+  )
 
 #making it so no values show on the plot that go below zero
 muskox_detections_plot <- muskox_detections %>%
@@ -459,7 +539,7 @@ ggplot(muskox_detections_fire_plot, aes(x = landcover_class, y = Muskox_per_week
   coord_cartesian(ylim = c(0, NA))
 
 
-write_xlsx(muskox_detections, "muskox_detections.xlsx")
+write_xlsx(muskox_detections1, "muskox_detections1.xlsx")
 
 #making simple bar graphs showing average muskox detections
 ggplot(muskox_detections, aes(x = landcover_class, y = Muskox_per_week_mean, fill = landcover_class)) +
@@ -503,6 +583,7 @@ grizzly_detections <- model_variables %>%
             num_cameras = n(),
             num_cluster = length(unique(cluster)),
 se = sd / sqrt(num_cameras))   # ✅ Standard Error
+
 
 
 #plotting
@@ -1175,12 +1256,6 @@ ggplot() +
     legend.text = element_text(size = 10)
   )
 
-
-library(terra)
-library(sf)
-library(ggplot2)
-library(tidyterra)
-
 # ---------------------------------------------------
 library(terra)
 library(sf)
@@ -1400,15 +1475,66 @@ ggplot() +
 
   library(terra)
   
-  breaks <- c(0, 50, 100, 200, 400, 900)
+ 
   
-  TRI_class <- terra::classify(
-    TRI_mask,
-    rcl = cbind(breaks[-length(breaks)], breaks[-1], 1:5)
-  )
+  # 2. Plot
+  # ggplot() +
+  #   
+  #   tidyterra::geom_spatraster(data = TRI_class) +
+  #   
+  #   geom_sf(data = TDN_boundary, fill = NA) +
+  #   
+  #   scale_fill_manual(
+  #     values = tri_cols,
+  #     name = "Terrain Ruggedness Index",
+  #     labels = c(
+  #       "0–50",
+  #       "50–100",
+  #       "100–200",
+  #       "200–400",
+  #       "400–900"
+  #     ),
+  #     na.value = "transparent",
+  #     na.translate = FALSE
+  #   ) +
+  #   
+  #   theme_void()
+  
+  # 
+  # ggplot() +
+  #   
+  #   annotation_map_tile(type ="cartolight", zoom = 9) +
+  #   
+  #   tidyterra::geom_spatraster(data = TRI_web, alpha = 0.85) +
+  #   
+  #   geom_sf(data = TDN_web, fill = NA, colour = "black") +
+  #   
+  #   scale_fill_manual(
+  #     values = tri_cols,
+  #     name = "Terrain Ruggedness Index",
+  #     labels = c("0–50","50–100","100–200","200–400","400–900"),
+  #     na.value = "transparent",
+  #     na.translate = FALSE
+  #   ) +
+  #   
+  #   coord_sf(crs = sf::st_crs(3857)) +
+  #   
+  #   theme_void() +
+  #   
+  #   theme(
+  #     legend.position = c(0.98, 0.08),
+  #     legend.justification = c(1, 0),
+  #     legend.background = element_rect(fill = "white", colour = "NA", linewidth = 0.3),
+  #     legend.title = element_text(size = 10),
+  #     legend.text = element_text(size = 9)
+  #   )
+  
+  breaks <- c(0, 25, 50, 75, 150, 10000)
+
   
   # 1. Define colours FIRST
   tri_cols <- c(
+    "0" ="grey",
     "1" = "black",
     "2" = "gold",
     "3" = "firebrick1",
@@ -1416,75 +1542,180 @@ ggplot() +
     "5" = "royalblue1"
   )
   
-  # 2. Plot
-  ggplot() +
-    
-    tidyterra::geom_spatraster(data = TRI_class) +
-    
-    geom_sf(data = TDN_boundary, fill = NA) +
-    
-    scale_fill_manual(
-      values = tri_cols,
-      name = "Terrain Ruggedness Index",
-      labels = c(
-        "0–50",
-        "50–100",
-        "100–200",
-        "200–400",
-        "400–900"
-      ),
-      na.value = "transparent",
-      na.translate = FALSE
-    ) +
-    
-    theme_void()
+  TDN_TRI <- rast("~/Desktop/Analysis/Learning/learning/Spatial/TDN_TRI")
   
+  plot(TDN_TRI)
+  TRI <- TDN_TRI
+
+  TDN_vect <- terra::vect(TDN_boundary)
+  TDN_vect <- terra::project(TDN_vect, crs(TRI))
   
-#adding basemap
+  TRI_mask <- terra::mask(
+    terra::crop(TRI, TDN_vect),
+    TDN_vect)
   
-  library(ggspatial)
+ 
+  TRI_class <- terra::classify(
+    TRI_mask,
+    rcl = cbind(breaks[-length(breaks)], breaks[-1], 1:5)
+  )
+  
+  plot(TRI_class)
   
   TRI_web <- terra::project(TRI_class, "EPSG:3857")
   TRI_web <- as.factor(TRI_web)
   TDN_web <- sf::st_transform(TDN_boundary, 3857)
   
+  #plotting TRI Map with Base Map 
   ggplot() +
     
-    annotation_map_tile(type ="cartolight", zoom = 9) +
+    annotation_map_tile(type = "cartolight", zoom = 8) +
     
-    tidyterra::geom_spatraster(data = TRI_web, alpha = 0.75) +
+    tidyterra::geom_spatraster(data = TRI_web, alpha = 0.85) +
     
+    geom_sf(data = TDN_web, fill = NA, colour = "black") +
+    scale_fill_grass_b(palette = "celsius", breaks = seq(0, 900, 50)) +
+    # scale_fill_manual(
+    #   values = tri_cols,
+    #   name = "Terrain\nRuggedness Index",
+    #   labels = c("0–50", "50–100", "100–200", "200–400", "400–900"),
+    #   na.value = "transparent",
+    #   na.translate = FALSE
+    # ) +
+    coord_sf(crs = sf::st_crs(3857)) +
+    
+    theme_void() +
+    theme(
+      legend.position = c(0.99, 0.08),
+      legend.justification = c(1, 0),
+      legend.background = element_rect(fill = "white", colour = NA),
+      
+      panel.background = element_rect(fill = NA, colour = NA),
+      plot.background  = element_rect(fill = NA, colour = NA)
+    )
+  
+  # With discrete values
+  factor <- volcano2_rast |>
+    mutate(cats = cut(elevation,
+                      breaks = c(100, 120, 130, 150, 170, 200),
+                      labels = c(
+                        "Very Low", "Low", "Average", "High",
+                        "Very High"
+                      )
+    ))
+  
+  ggplot() +
+    geom_spatraster(data = factor, aes(fill = cats)) +
+    scale_fill_grass_d(palette = "soilmoisture")
+  
+  #saving to upload into QGIS
+  terra::writeRaster(
+    TRI_mask,
+    "TRI_mask.tif",
+    overwrite = TRUE
+  )
+  
+  
+  #new code from Val
+  library(terra)
+  library(tidyterra)
+  library(ggplot2)
+  library(ggspatial)
+  
+
+  
+  # Load the raster (path will be different)
+  TDN_TRI <- rast("~/Desktop/Analysis/Learning/learning/Spatial/TDN_TRI") |>
+    # Trim the NAs away
+    trim()
+  
+  # Plot to see
+  plot(TDN_TRI)
+  
+  # Reclassify
+  TRI_class <- TDN_TRI  |>
+    mutate(cats = cut(TDN_TRI,
+                      breaks = breaks,
+                      labels = labels))
+  
+  # Plot to check reclass has worked
+  plot(TRI_class[["cats"]])
+  
+  #plotting TRI Map with Base Map
+  ggplot() +
+    
+    annotation_map_tile(type = "cartolight", zoom = 8) +
+    
+    geom_spatraster(data = TRI_class, aes(fill = cats)) +
+    
+    # This is commented out for me, since I don't have the TDN_web
+    # But don't forget it, I remove the code for it since it was
+    # confusing me
     geom_sf(data = TDN_web, fill = NA, colour = "black") +
     
     scale_fill_manual(
-      values = tri_cols,
-      name = "Terrain Ruggedness Index",
-      labels = c("0–50","50–100","100–200","200–400","400–900"),
+      values = tri_cols, # defined above
+      name = "Terrain\nRuggedness Index",
+      labels = labels, # defined above
       na.value = "transparent",
       na.translate = FALSE
     ) +
     
-    coord_sf(crs = sf::st_crs(3857)) +
+    coord_sf() +
+    theme_void() +
+    theme(
+      legend.position = c(0.99, 0.08),
+      legend.justification = c(1, 0),
+      legend.background = element_rect(fill = "white", colour = NA),
+      panel.background = element_rect(fill = NA, colour = NA),
+      plot.background  = element_rect(fill = NA, colour = NA)
+    )
+  
+ #removing code
+  library(terra)
+  library(sf)
+  library(ggplot2)
+  library(tidyterra)
+  
+  # --- ensure everything is in same CRS ---
+  cats <- TRI_class[["cats"]]
+  tdn  <- TDN_web
+  
+  # (no need to reproject unless you want; keeping UTM consistent is fine)
+  # cats <- terra::project(cats, "EPSG:32612")
+  # tdn  <- st_transform(tdn, 32612)
+  
+  # define breaks, labels and color => they will correspond to each other
+  breaks <- c(-1, 1, 50, 100, 250, 1000)
+  labels <- c("0–1", "1–50", "50–100", "100–250", "250–1000")
+  tri_cols <- c("black","skyblue4","yellow","mediumturquoise","magenta3")
+  
+  # --- plot ---
+  ggplot() +
+    
+    geom_spatraster(data = cats) +
+    
+    
+    geom_sf(data = tdn,
+            fill = NA,
+            colour = "black",
+            linewidth = 0.6) +
+    
+    scale_fill_manual(
+      values = tri_cols,
+      name = "Terrain\nRuggedness Index",
+      labels = labels,
+      na.value = "transparent",
+      na.translate = FALSE
+    ) +
+    
+    coord_sf(expand = FALSE) +
     
     theme_void() +
     
     theme(
-      legend.position = c(0.96, 0.08),
-      legend.justification = c(1, 0),
-      legend.background = element_rect(fill = "white", colour = "black", linewidth = 0.3),
-      legend.title = element_text(size = 10),
-      legend.text = element_text(size = 9)
+      legend.position = "right",
+      legend.background = element_rect(fill = "white", colour = NA)
     )
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
     
