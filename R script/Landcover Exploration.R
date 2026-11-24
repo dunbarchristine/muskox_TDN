@@ -210,6 +210,18 @@ ggplot(data = tdn_ecoregions_2) +
     panel.grid.minor = element_blank())
 
 
+library(dplyr)
 
+camera_effort <- model_variables %>%
+  distinct(location, N_days_effort)
 
-    
+mean_effort <- mean(camera_effort$N_days_effort, na.rm = TRUE)
+
+se_effort <- sd(camera_effort$N_days_effort, na.rm = TRUE) /
+  sqrt(nrow(camera_effort))
+
+range_effort <- range(camera_effort$N_days_effort, na.rm = TRUE)
+
+mean_effort
+se_effort
+range_effort    

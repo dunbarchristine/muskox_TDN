@@ -355,47 +355,92 @@ all_variables_long <- all_variables %>%
 #             muskox_detection_rate = muskox_fire_detection_sum/num_days*30) 
 
 
+
+#I dont trust this code... use code below this
+
 # Calculate total muskox detections weighted by fire age proportion
-muskox_fire_detections <- model_variables %>%
+# muskox_fire_detections <- model_variables %>%
+#   st_drop_geometry() %>%
+#   #drop_na(N_days_effort) %>%
+#   group_by(location, cluster, season) %>%
+#   summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort),
+#             fire_age0 = mean(fire_age0), 
+#             fire_age1 = mean(fire_age1),
+#             fire_age2 = mean(fire_age2),
+#             fire_age3 = mean(fire_age3),
+#             fire_age4 = mean(fire_age4),
+#   ) %>%
+#   mutate(Muskox_per_week = Muskox/N_days_effort*7) %>%
+#   pivot_longer(cols = c("fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4"), names_to = "fire_age", values_to = "proportion") %>%
+#   group_by(location, cluster, season) %>%
+#   filter(proportion == max(proportion)) %>%
+#   group_by(fire_age, season) %>%
+#   summarise(Muskox = sum(Muskox), 
+#             N_days_effort = sum(N_days_effort),
+#             Muskox_per_week_mean_log = mean(log(Muskox_per_week + 1/7)), 
+#             sd_log = sd(log(Muskox_per_week + 1/7)), 
+#             se_log = sd_log / sqrt(n()),
+#             num_cameras = n(),
+#             num_cluster = length(unique(cluster))) %>%
+#   mutate(Muskox_per_week_mean = exp(Muskox_per_week_mean_log) - 1/7, 
+#          upper = exp(Muskox_per_week_mean_log + 1.96 * sd_log) - 1/7,
+#          lower = exp(Muskox_per_week_mean_log - 1.96 * sd_log) - 1/7,
+#          lower = ifelse(lower < 0, 0, lower)) %>%
+#   mutate(fire_age = recode(fire_age,
+#                            "fire_age0" = "0 - 10 Years",
+#                            "fire_age1" = "11 - 20 Years",
+#                            "fire_age2" = "21 - 30 Years",
+#                            "fire_age3" = "31 to 50 Years",
+#                            "fire_age4" = "Unburned"))
+
+
+#same code almost but calculating SE 
+muskox_fire_detections1 <- model_variables %>%
   st_drop_geometry() %>%
-  #drop_na(N_days_effort) %>%
   group_by(location, cluster, season) %>%
-  summarise(Muskox = sum(Muskox), N_days_effort = sum(N_days_effort),
-            fire_age0 = mean(fire_age0), 
-            fire_age1 = mean(fire_age1),
-            fire_age2 = mean(fire_age2),
-            fire_age3 = mean(fire_age3),
-            fire_age4 = mean(fire_age4),
+  summarise(
+    Muskox = sum(Muskox),
+    N_days_effort = sum(N_days_effort),
+    
+    fire_age0 = mean(fire_age0), 
+    fire_age1 = mean(fire_age1),
+    fire_age2 = mean(fire_age2),
+    fire_age3 = mean(fire_age3),
+    fire_age4 = mean(fire_age4)
   ) %>%
-  mutate(Muskox_per_week = Muskox/N_days_effort*7) %>%
-  pivot_longer(cols = c("fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4"), names_to = "fire_age", values_to = "proportion") %>%
+  mutate(Muskox_per_week = Muskox / N_days_effort * 7) %>%
+  pivot_longer(
+    cols = c("fire_age0", "fire_age1", "fire_age2", "fire_age3", "fire_age4"),
+    names_to = "fire_age",
+    values_to = "proportion"
+  ) %>%
   group_by(location, cluster, season) %>%
   filter(proportion == max(proportion)) %>%
   group_by(fire_age, season) %>%
-  summarise(Muskox = sum(Muskox), 
-            N_days_effort = sum(N_days_effort),
-            Muskox_per_week_mean_log = mean(log(Muskox_per_week + 1/7)), 
-            sd_log = sd(log(Muskox_per_week + 1/7)), 
-            se_log = sd_log / sqrt(n()),
-            num_cameras = n(),
-            num_cluster = length(unique(cluster))) %>%
-  mutate(Muskox_per_week_mean = exp(Muskox_per_week_mean_log) - 1/7, 
-         upper = exp(Muskox_per_week_mean_log + 1.96 * sd_log) - 1/7,
-         lower = exp(Muskox_per_week_mean_log - 1.96 * sd_log) - 1/7,
-         lower = ifelse(lower < 0, 0, lower)) %>%
-  mutate(fire_age = recode(fire_age,
-                           "fire_age0" = "0 - 10 Years",
-                           "fire_age1" = "11 - 20 Years",
-                           "fire_age2" = "21 - 30 Years",
-                           "fire_age3" = "31 to 50 Years",
-                           "fire_age4" = "Unburned"))
+  summarise(
+    Muskox = sum(Muskox),
+    N_days_effort = sum(N_days_effort),
+    
+    Muskox_per_week_mean = mean(Muskox_per_week, na.rm = TRUE),
+    sd_Muskox_per_week   = sd(Muskox_per_week, na.rm = TRUE),
+    se_Muskox_per_week   = sd_Muskox_per_week / sqrt(n()),
+    
+    num_cameras = n(),
+    num_cluster = length(unique(cluster))
+  ) %>%
+  mutate(
+    fire_age = recode(fire_age,
+                      "fire_age0" = "0 - 10 Years",
+                      "fire_age1" = "11 - 20 Years",
+                      "fire_age2" = "21 - 30 Years",
+                      "fire_age3" = "31 to 50 Years",
+                      "fire_age4" = "Unburned"
+    )
+  )
 
+write_xlsx(muskox_fire_detections1, "muskox_fire_detections1.xlsx")
 
-
-
-write_xlsx(muskox_fire_detections, "muskox_fire_detections.xlsx")
-
-ggplot(muskox_fire_detections, aes(x = fire_age, y = Muskox_per_week_mean)) +
+ggplot(muskox_fire_detections1, aes(x = fire_age, y = Muskox_per_week_mean)) +
   geom_point() +
   geom_pointrange(aes(ymin = lower, ymax = upper)) +
   facet_wrap(~season) +

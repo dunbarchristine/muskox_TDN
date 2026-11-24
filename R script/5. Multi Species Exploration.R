@@ -659,7 +659,7 @@ wolf_season_data   <- st_as_sf(wolf_season_data)
 # Step 3: Plot
 # ----------------------------
 ggplot() +
-  
+
   # Raster landcover (key NA fix is here)
   tidyterra::geom_spatraster(
     data = SCANFI_masked,
@@ -667,7 +667,7 @@ ggplot() +
     alpha = 1,
     na.rm = TRUE
   ) +
-  
+
   # Boundary
   geom_sf(
     data = TDN_boundary,
@@ -675,25 +675,25 @@ ggplot() +
     colour = "black",
     size = 0
   ) +
-  
+
   # Muskox
   geom_sf(
     data = muskox_season_data %>% filter(muskox_per_week > 0),
     aes(size = muskox_per_week, colour = "Muskox")
   ) +
-  
+
   # Grizzly Bear
   geom_sf(
     data = grizz_season_data %>% filter(grizz_per_week > 0),
     aes(size = grizz_per_week, colour = "Grizzly Bear")
   ) +
-  
+
   # Gray Wolf
   geom_sf(
     data = wolf_season_data %>% filter(wolf_per_week > 0),
     aes(size = wolf_per_week, colour = "Gray Wolf")
   ) +
-  
+
   # Landcover scale (NO NA in legend)
   scale_fill_manual(
     name = "Landcover Type",
@@ -701,7 +701,7 @@ ggplot() +
     na.translate = FALSE,
     drop = TRUE
   ) +
-  
+
   # Species scale
   scale_colour_manual(
     name = "Species",
@@ -716,7 +716,7 @@ ggplot() +
       "Gray Wolf" = "Grey Wolf"
     )
   ) +
-  
+
   # Legends
   guides(
     colour = guide_legend(
@@ -730,20 +730,20 @@ ggplot() +
       keyheight = unit(0.6, "cm")
     )
   ) +
-  
+
   # Facets
   facet_wrap(~season, ncol = 1) +
-  
+
   # Labels
   labs(size = "Average Species Detections Per Week") +
-  
+
   # Map extent
   coord_sf(
     xlim = st_bbox(TDN_boundary)[c("xmin", "xmax")],
     ylim = st_bbox(TDN_boundary)[c("ymin", "ymax")],
     expand = FALSE
   ) +
-  
+
   # Theme
   theme_minimal() +
   theme(
@@ -1446,9 +1446,49 @@ ggplot(model_variables, aes(x = fire_age1, y = Muskox, color = season)) +
   ) +
   theme_minimal()
 
+#making one x-axis with all three species 
 
+library(dplyr)
 
+all_counts <- bind_rows(
+  mutate(grizzly_counts, species = "Grizzly Bear"),
+  mutate(wolf_counts,    species = "Grey Wolf"),
+  mutate(muskox_counts,  species = "Muskox")
+)
 
+ggplot(all_counts,
+       aes(x = year_week,
+           y = count,
+           fill = season,
+           group = species)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ species, ncol = 1) +
+  labs(
+    x = "Week",
+    y = "Independent Detections Per Week",
+    fill = "Season"
+  ) +
+  theme_minimal() +
+theme(
+    axis.text.x = element_text(
+      angle = 90,
+      vjust = 0.5,
+      hjust = 1
+    )
+  ) +
+  scale_fill_manual(values = c(
+    Winter = "cornflowerblue",
+    Summer = "darkkhaki",
+    Unknown = "grey70"
+  ))
+
+write_xlsx(wolf_fire_detections,"wolf_fire_detections.xlsx")
+
+write_xlsx(wolf_detections,"wolf_detections.xlsx")
+
+write_xlsx(grizzly_detections,"grizzly_detections.xlsx")
+
+write_xlsx(grizz_fire_detections,"grizz_fire_detections.xlsx")
 
 
 

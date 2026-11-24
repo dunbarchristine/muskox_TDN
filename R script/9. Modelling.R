@@ -368,6 +368,9 @@ winter_dredge <- dredge(model_global_win_5, fixed = ~cond(offset(log(n_days_effo
 performance::check_collinearity(mod_global_sum_shrub)
 performance::check_collinearity(mod_global_sum_trees)
 performance::check_collinearity(mod_global_sum_shrubs_trees)
+
+#export to excel
+write_xlsx(model_variables, "model_variables.xlsx")
  
 #adding bryoid and herbs together to create new variable called "groundcover"
 model_variables <- model_variables %>%

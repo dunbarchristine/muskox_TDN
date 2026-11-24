@@ -395,6 +395,53 @@ muskox_detections1 <- model_variables %>%
     num_cameras = n(),
     num_cluster = length(unique(cluster))
   )
+#summarize across seasons (camera_summary) and skip the initial summary across cameras and season (camera_season).
+#That way your ranges won't have partial days.
+camera_summary <- model_variables1 %>%
+  group_by(season) %>%
+  summarise(
+    mean_days = mean(N_days_effort, na.rm = TRUE),
+    sd_days = sd(N_days_effort, na.rm = TRUE),
+    se_days = sd_days / sqrt(sum(!is.na(N_days_effort))),
+    min_days = min(N_days_effort, na.rm = TRUE),
+    max_days = max(N_days_effort, na.rm = TRUE),
+    n_obs = sum(!is.na(N_days_effort))
+  )
+
+#old code for SE
+camera_season <- model_variables1 %>%
+  + group_by(camera_id, season) %>%
+  + summarise(
+    + mean_weekly_effort = mean(N_days_effort, na.rm = TRUE),
+    + .groups = "drop"
+    + )
+
+camera_summary <- model_variables1 %>%
+  group_by(season) %>%
+  summarise(
+    mean_days = mean(N_days_effort, na.rm = TRUE),
+    sd_days = sd(N_days_effort, na.rm = TRUE),
+    se_days = sd_days / sqrt(sum(!is.na(N_days_effort))),
+    min_days = min(N_days_effort, na.rm = TRUE),
+    max_days = max(N_days_effort, na.rm = TRUE),
+    n_obs = sum(!is.na(N_days_effort))
+  )
+
+model_variables1_fixed <- model_variables1 %>%
+  select(-N_days_effort) %>%
+  left_join(weekly_effort,
+            by = c("location", "year", "week"))
+
+camera_summary <- model_variables1_fixed %>%
+  group_by(season) %>%
+  summarise(
+    mean_days = mean(N_days_effort, na.rm = TRUE),
+    sd_days   = sd(N_days_effort, na.rm = TRUE),
+    se_days   = sd_days / sqrt(sum(!is.na(N_days_effort))),
+    min_days  = min(N_days_effort, na.rm = TRUE),
+    max_days  = max(N_days_effort, na.rm = TRUE),
+    n_obs     = sum(!is.na(N_days_effort))
+  )
 
 #making it so no values show on the plot that go below zero
 muskox_detections_plot <- muskox_detections %>%
@@ -1070,7 +1117,368 @@ ggplot(all_predictions,
   )
 
 
+### New Prediction code Nov 16 2026 ###
 
+summer_data <- model_variables %>% 
+  
+  filter(season == "Summer") 
+
+
+TRI_data <- data.frame( 
+  
+  TRI_extracted = seq( 
+    
+    min(summer_data$TRI_extracted, na.rm = TRUE), 
+    
+    max(summer_data$TRI_extracted, na.rm = TRUE), 
+    
+    length.out = 100 
+    
+  ), 
+  
+  Predators = mean(summer_data$Predators, na.rm = TRUE), 
+  
+  Shrub = mean(summer_data$Shrub, na.rm = TRUE), 
+
+  N_days_effort = 7, 
+  
+  cluster = summer_data$cluster[1] 
+  
+) 
+
+#generate new predictions 
+
+TRI_pred <- predict( 
+  
+  mod_pred_sum_1, 
+  
+  newdata = TRI_data, 
+  
+  type = "link", 
+  
+  se.fit = TRUE, 
+  
+  re.form = NA 
+  
+) 
+
+TRI_prediction <- TRI_data %>% 
+  
+  mutate( 
+    
+    fit_link = TRI_pred$fit, 
+    
+    se_link = TRI_pred$se.fit, 
+    
+    predicted_muskox_week = exp(fit_link), 
+    
+    lower = exp(fit_link - 1.96 * se_link), 
+    
+    upper = exp(fit_link + 1.96 * se_link) 
+    
+  ) 
+
+#then plot 
+
+ggplot(TRI_prediction, 
+       
+       aes(x = TRI_extracted, 
+           
+           y = predicted_muskox_week)) + 
+
+  geom_ribbon( 
+    
+    aes(ymin = lower, ymax = upper), 
+    
+    alpha = 0.2, 
+    
+    fill = "grey70" 
+    
+  ) + 
+  geom_line(linewidth = 1) + 
+  
+  labs( 
+    
+    x = "Terrain Ruggedness Index", 
+    
+    y = "Predicted Muskox Detections per Week" 
+    
+  ) + 
+  theme_minimal() 
+
+#Shrub prediction code: 
+  
+  # Step 1: Create prediction data 
+  
+  Shrub_data <- model_variables %>% 
+  
+  filter(season == "Summer") %>% 
+  
+  ungroup() %>% 
+  
+  modelr::data_grid( 
+    
+    TRI_extracted = 0, 
+    
+    Shrub = seq(0, 1, by = 0.01), 
+    
+    Predators = 0, 
+    
+    N_days_effort = 7, 
+    
+    cluster = "new" 
+    
+  ) 
+
+# Step 2: Generate predictions 
+
+Shrub_pred <- predict( 
+  
+  mod_pred_sum_1, 
+  
+  newdata = Shrub_data, 
+  
+  type = "link", 
+  
+  se.fit = TRUE, 
+  
+  re.form = NA 
+  
+) 
+
+# Step 3: Calculate predictions and 95% confidence intervals 
+
+Shrub_prediction <- Shrub_data %>% 
+  
+  mutate( 
+    
+    fit_link = Shrub_pred$fit, 
+    
+    se_link = Shrub_pred$se.fit, 
+    
+    predicted_muskox_week = exp(fit_link), 
+    
+    lower = exp(fit_link - 1.96 * se_link), 
+    
+    upper = exp(fit_link + 1.96 * se_link) 
+    
+  ) 
+
+# Step 4: Plot 
+
+ggplot(Shrub_prediction, 
+       
+       aes(x = Shrub, 
+           
+           y = predicted_muskox_week)) + 
+  
+  geom_ribbon( 
+    
+    aes(ymin = lower, ymax = upper), 
+    
+    alpha = 0.2, 
+    
+    fill = "grey70" 
+    
+  ) + 
+  
+  geom_line(linewidth = 1) + 
+  
+  geom_rug( 
+    
+    data = model_variables %>% filter(season == "Summer"), 
+    
+    aes(x = Shrub, y = 0), 
+    
+    inherit.aes = FALSE, 
+    
+    sides = "b", 
+    
+    alpha = 0.3, 
+    
+    position = position_jitter(height = 0.02) 
+    
+  ) + 
+  
+  scale_x_continuous(breaks = seq(0, 1, 0.2)) + 
+  
+  labs( 
+    
+    x = "Shrub Land Cover", 
+    
+    y = "Predicted Muskox Detections per Week" 
+    
+  ) + 
+  
+  
+  
+  theme_minimal() 
+
+
+
+#Predator prediction code: 
+  
+  predator_data <- model_variables %>% 
+  
+  filter(season == "Summer") %>% 
+  
+  ungroup() %>% 
+  
+  modelr::data_grid( 
+    
+    TRI_extracted = 0, 
+    
+    Shrub = 0, 
+    
+    Predators = seq(0, 5, by = 0.1), 
+    
+    N_days_effort = 7, 
+    
+    cluster = "new" 
+    
+  ) 
+
+# Step 2: Generate predictions 
+
+predator_pred <- predict( 
+  
+  mod_pred_sum_1, 
+  
+  newdata = predator_data, 
+  
+  type = "link", 
+  
+  se.fit = TRUE, 
+  
+  re.form = NA 
+  
+) 
+
+# Step 3: Calculate predictions and 95% confidence intervals 
+
+predators_prediction <- predator_data %>% 
+  
+  mutate( 
+    
+    fit_link = predator_pred$fit, 
+    
+    se_link = predator_pred$se.fit, 
+    
+    
+    
+    predicted_muskox_week = exp(fit_link), 
+    
+    lower = exp(fit_link - 1.96 * se_link), 
+    
+    upper = exp(fit_link + 1.96 * se_link) 
+    
+  ) 
+
+# Step 4: Plot 
+
+ggplot(predators_prediction, 
+       
+       aes(x = Predators, 
+           
+           y = predicted_muskox_week)) + 
+  
+  # 95% confidence interval 
+  
+  geom_ribbon( 
+    
+    aes(ymin = lower, ymax = upper), 
+    
+    alpha = 0.2, 
+    
+    fill = "grey70" 
+    
+  ) + 
+  
+  # Prediction line 
+  
+  geom_line(linewidth = 1) + 
+  
+  # Observed predator detections 
+  
+  geom_rug( 
+    
+    data = model_variables %>% filter(season == "Summer"), 
+    
+    aes(x = Predators, y = 0), 
+    
+    inherit.aes = FALSE, 
+    
+    sides = "b", 
+    
+    alpha = 0.3, 
+    
+    position = position_jitter(height = 0.02) 
+    
+  ) + 
+  
+  # Axis scales 
+  
+  scale_x_continuous(breaks = 0:5) + 
+  
+  scale_y_continuous(breaks = 0:4) + 
+  
+  coord_cartesian( 
+    
+    xlim = c(0, 5), 
+    
+    ylim = c(0, 4) 
+    
+  ) + 
+  
+  
+  
+  # Labels 
+  
+  labs( 
+    
+    x = "Number of Predators", 
+    
+    y = "Predicted Muskox Detections per Week" 
+    
+  ) + 
+  
+  
+  
+  theme_minimal() 
+
+
+
+#generating 95% CI 
+# Extract model coefficients 
+
+coef_table <- summary(mod_pred_sum_1)$coefficients$cond 
+
+# Calculate 95% confidence intervals 
+
+CI_lower <- coef_table[, "Estimate"] - 1.96 * coef_table[, "Std. Error"] 
+
+CI_upper <- coef_table[, "Estimate"] + 1.96 * coef_table[, "Std. Error"] 
+
+
+# Create table 
+
+Table_2 <- data.frame( 
+  
+  Variable = rownames(coef_table), 
+  
+  Beta = coef_table[, "Estimate"], 
+  
+  SE = coef_table[, "Std. Error"], 
+  
+  CI_Lower = CI_lower, 
+  
+  CI_Upper = CI_upper, 
+  
+  P_value = coef_table[, "Pr(>|z|)"] 
+  
+) 
+
+Table_2 
 
 
 
@@ -1677,9 +2085,10 @@ ggplot() +
   library(ggplot2)
   library(tidyterra)
   
-  # --- ensure everything is in same CRS ---
-  cats <- TRI_class[["cats"]]
-  tdn  <- TDN_web
+ 
+  
+  cats_raster <- TRI_class[["cats"]]
+  tdn        <- TDN_web
   
   # (no need to reproject unless you want; keeping UTM consistent is fine)
   # cats <- terra::project(cats, "EPSG:32612")
@@ -1690,13 +2099,18 @@ ggplot() +
   labels <- c("0–1", "1–50", "50–100", "100–250", "250–1000")
   tri_cols <- c("black","skyblue4","yellow","mediumturquoise","magenta3")
   
-  # --- plot ---
+  library(ggplot2)
+  library(terra)
+  library(sf)
+  library(tidyterra)
+  
+  cats_raster <- TRI_class[["cats"]]
+  
   ggplot() +
     
-    geom_spatraster(data = cats) +
+    geom_spatraster(data = cats_raster) +
     
-    
-    geom_sf(data = tdn,
+    geom_sf(data = TDN_web,
             fill = NA,
             colour = "black",
             linewidth = 0.6) +
@@ -1714,8 +2128,78 @@ ggplot() +
     theme_void() +
     
     theme(
-      legend.position = "right",
-      legend.background = element_rect(fill = "white", colour = NA)
+      legend.position = c(0.8, 0.4),
+      legend.justification = c(0, 0.5),
+      
+      legend.title = element_text(size = 8),
+      legend.text  = element_text(size = 7)
     )
+
+  library(ggplot2)
+  library(terra)
+  library(sf)
+  library(tidyterra)
+  library(ggspatial)
   
+  ggplot() +
     
+    geom_spatraster(data = cats_raster) +
+    
+    geom_sf(data = TDN_web,
+            fill = NA,
+            colour = "black",
+            linewidth = 0.6) +
+    
+    geom_sf(data = camera_buffer,
+            colour = "red",
+            size = 1.5) +
+    
+    scale_fill_manual(
+      values = tri_cols,
+      name = "Terrain\nRuggedness Index",
+      labels = labels,
+      na.value = "transparent",
+      na.translate = FALSE
+    ) +
+    
+    coord_sf(expand = FALSE) +
+    
+    annotation_scale(
+      location = "bl",
+      unit_category = "metric",
+      width_hint = 0.25,
+      pad_x = unit(5, "cm"),
+      pad_y = unit(2.5, "cm")
+    ) +
+    
+    theme_void() +
+    
+    theme(
+      legend.position = c(0.8, 0.4),
+      legend.justification = c(0, 0.5),
+      
+      legend.title = element_text(size = 8),
+      legend.text  = element_text(size = 7),
+      
+      # legend.background = element_rect(
+      #   fill = "white",
+      #   colour = "black",
+      #   linewidth = 0.4
+      # ),
+      
+      legend.box.margin = margin(6, 6, 6, 6),
+      legend.spacing = unit(4, "pt")
+    )
+
+
+  library(dplyr)
+  
+  model_variables1 <- model_variables %>%
+    mutate(camera_id = paste(cluster, camera, sep = "_"))
+  
+  
+  
+  
+  
+  
+  
